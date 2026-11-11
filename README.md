@@ -23,3 +23,5 @@ Run `npm test` and `npm run build` for checks. GPL-3.0-or-later; see LICENSE and
 ## Microphone troubleshooting
 
 Use **Test microphone** to check the input level. Stop the test before starting voice. A successful microphone test with failed recognition points to Chrome’s speech service rather than the animation commands. Select the built-in input in Chrome’s microphone settings; macOS must also allow Google Chrome microphone access. After switching from a disconnected input, fully quit and reopen Chrome if capture still fails. **Try lap** and **Try flirt** let you verify animations independently.
+
+Voice matching is strict: only the entire final phrase `take a lap` or `flirt` is accepted, optionally preceded by `Orbi`. Extra words and negations are rejected. Reported confidence below 80% is rejected; engines that omit confidence or report zero still require an exact phrase. Recognition errors can still produce an exact command, so this is not a guarantee against all false activations.

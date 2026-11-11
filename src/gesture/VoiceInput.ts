@@ -1,10 +1,17 @@
 import type { Action } from '../app/types';
 export function voiceCommand(text:string): 'lap'|'flirt'|null {
- const phrase=text.toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
- if (/\btake a lap\b/.test(phrase)) return 'lap';
- if (/\bflirt\b/.test(phrase)) return 'flirt';
+ const phrase=text.toLowerCase().replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
+ if (phrase==='take a lap'||phrase==='orbi take a lap') return 'lap';
+ if (phrase==='flirt'||phrase==='orbi flirt') return 'flirt';
  return null;
 }
+export function acceptedVoiceCommand(text:string,confidence?:number) {
+ const command=voiceCommand(text);
+ // Some engines provide zero when confidence is unavailable. Exact text is still required.
+ if(command&&typeof confidence==='number'&&Number.isFinite(confidence)&&confidence>0&&confidence<.8)return null;
+ return command;
+}
+
 export function voiceErrorMessage(error:string) {
  if(error==='audio-capture'||error==='NotReadableError'||error==='NotFoundError') return 'Microphone unavailable. Select your built-in microphone in Chrome settings, close other microphone apps, then fully quit and reopen Chrome.';
  if(error==='not-allowed'||error==='NotAllowedError'||error==='service-not-allowed') return 'Microphone blocked. Allow this site in Chrome and Google Chrome in macOS Privacy & Security → Microphone.';
@@ -30,7 +37,7 @@ export function installVoice(anchor:HTMLElement, dispatch:(a:Action)=>void) {
  const startRecognition=()=>{
   if(!wanted)return;
   const current=new Speech();recognition=current;
-  current.lang='en-US';current.continuous=true;current.interimResults=true;
+  current.lang='en-US';current.continuous=true;current.interimResults=true;current.maxAlternatives=1;
   current.onstart=()=>{if(wanted)status.textContent='Listening in English · say “take a lap” or “flirt”';};
   current.onaudiostart=()=>{if(wanted)status.textContent='Microphone connected · speak now';};
   current.onspeechstart=()=>{if(wanted)status.textContent='Speech detected…';};
@@ -39,8 +46,8 @@ export function installVoice(anchor:HTMLElement, dispatch:(a:Action)=>void) {
    for(let i=event.resultIndex;i<event.results.length;i++){
     const spoken=event.results[i][0].transcript;
     if(!event.results[i].isFinal){status.textContent=`Hearing: ${spoken}`;continue;}
-    const command=voiceCommand(spoken);
-    status.textContent=command?`Heard: ${spoken}`:`Heard: ${spoken}. Say “take a lap” or “flirt”.`;
+    const command=acceptedVoiceCommand(spoken,event.results[i][0].confidence);
+    status.textContent=command?`Heard: ${spoken}`:`Ignored: “${spoken}”. Please say exactly “take a lap” or “flirt” clearly.`;
     if(command)dispatch({type:'routine',value:command});
    }
   };

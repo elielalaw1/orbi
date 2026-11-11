@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {voiceCommand} from '../src/gesture/VoiceInput';
+import {voiceCommand,acceptedVoiceCommand} from '../src/gesture/VoiceInput';
 import {StateStore} from '../src/app/StateStore';
 it('recognizes English routines and rejects partial words and gesture navigation',()=>{
  expect(voiceCommand('Orbi, take a lap!')).toBe('lap');
@@ -17,4 +17,17 @@ it('reserves routine control, restores hand control, and allows reset',()=>{
  expect(store.animator.spatial.snapshot().target).toEqual([-.5,0]);
  store.dispatch({type:'routine',value:'lap'});store.dispatch({type:'reset'});
  expect(store.animator.routineActive(store.time)).toBe(false);
+});
+
+it('requires a whole command and rejects negations, similar words and extra phrases',()=>{
+ for(const text of ['do not flirt','stop flirting','please take a lap','take a laptop','flirt with me','take a lap and flirt','Orbi do not flirt','take-a-lap'])expect(voiceCommand(text)).toBeNull();
+ expect(voiceCommand('  ORBI, take   a lap! ')).toBe('lap');
+ expect(voiceCommand('Orbi flirt')).toBe('flirt');
+});
+it('rejects low-confidence final matches without guessing from alternatives',()=>{
+ expect(acceptedVoiceCommand('flirt',.79)).toBeNull();
+ expect(acceptedVoiceCommand('take a lap',.8)).toBe('lap');
+ expect(acceptedVoiceCommand('flirt',0)).toBe('flirt');
+ expect(acceptedVoiceCommand('flirt')).toBe('flirt');
+ expect(acceptedVoiceCommand('flirting',.99)).toBeNull();
 });
