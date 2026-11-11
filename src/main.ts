@@ -1,4 +1,4 @@
-import { floodFrame, FLOOD_DURATION } from "./character/FloodScene";
+import { floodCueTime, floodFrame, FLOOD_DURATION } from "./character/FloodScene";
 import "./style.css";
 import { installVoice } from "./gesture/VoiceInput";
 import { palmCenter } from "./gesture/GestureNavigator";
@@ -822,11 +822,12 @@ function boot() {
     if (!output) infer(now);
     const elapsed = floodTime();
     const normalFrame = store.animator.sample(store.time, store.settings);
-    const frame = elapsed < 0 ? normalFrame : floodFrame(normalFrame, elapsed);
+    const cueTime = floodCueTime(elapsed);
+    const frame = cueTime < 0 ? normalFrame : floodFrame(normalFrame, cueTime);
     const resolution = output
       ? (square ? (sync.latest ? store.settings.resolution : 1024) : 2160)
       : store.settings.resolution;
-    renderer.render(frame, store.settings, resolution, elapsed);
+    renderer.render(frame, store.settings, resolution, cueTime);
     if (!output) {
       if (now - lastSync > 33) {
         sync.send({
