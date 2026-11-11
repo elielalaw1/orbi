@@ -2,7 +2,13 @@ import type { Frame } from "./FaceAnimator";
 import { blend, presets, type Expression } from "./EmotionPresets";
 import { roomToMaster } from "../dome/ProjectionMath";
 
-export const FLOOD_DURATION = 120;
+export const FLOOD_DURATION = 90;
+const AUTHORED_DURATION = 120;
+
+// The route, expressions and shader share the original choreography clock.
+export function floodCueTime(elapsed: number): number {
+  return elapsed < 0 ? -1 : (elapsed / FLOOD_DURATION) * AUTHORED_DURATION;
+}
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const ease = (value: number) => {
   const x = clamp(value);
