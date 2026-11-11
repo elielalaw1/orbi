@@ -330,7 +330,7 @@ function boot() {
   }
   const launch = (mode: string) => {
     const w = window.open(
-      `/?output=${mode}`,
+      `${import.meta.env.BASE_URL}?output=${mode}`,
       "orbi-" + mode,
       "popup,width=1280,height=720",
     );
