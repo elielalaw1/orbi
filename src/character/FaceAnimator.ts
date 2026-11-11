@@ -1,12 +1,15 @@
 import { roomToMaster } from "../dome/ProjectionMath";
-import type { Settings } from "../app/types";
+import type { GestureScene, Settings } from "../app/types";
 import { EmotionStateMachine, ease } from "./EmotionStateMachine";
 import { SpatialAnimator } from "./SpatialAnimator";
+type Routine = "lap" | "flirt" | GestureScene;
+const sceneIds: Record<GestureScene, number> = { pinball: 1, gravity: 2, rain: 3, ghost: 4 };
+
 export class FaceAnimator {
   emotion = new EmotionStateMachine();
   spatial = new SpatialAnimator();
-  private routine: {kind:'lap'|'flirt'|'pinball'|'gravity'|'fishing'|'rain'|'ghost';start:number;target?:[number,number]}|null=null;
-  startRoutine(kind:'lap'|'flirt'|'pinball'|'gravity'|'fishing'|'rain'|'ghost',now:number){
+  private routine: {kind:Routine;start:number;target?:[number,number]}|null=null;
+  startRoutine(kind:Routine,now:number){
     const side = Math.random() < .5 ? -1 : 1;
     this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
   }
@@ -55,7 +58,7 @@ export class FaceAnimator {
         this.spatial.moveTo(...(this.routine.target ?? roomToMaster(50,20)),now,s);
         if(t>900){hearts=1;kiss=.7+.3*Math.sin(t*.008);wink=Math.pow(Math.max(0,Math.sin(t*.005)),8);}
       }else{
-        scene=['pinball','gravity','fishing','rain','ghost'].indexOf(this.routine.kind)+1;
+        scene=sceneIds[this.routine.kind] ?? 0;
         sceneTime=t/1000;
       }
     }

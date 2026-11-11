@@ -21,6 +21,7 @@ vec3 roomDir(vec2 p){
  float c=cos(radians(26.0)),s=sin(radians(26.0));
  return vec3(l.x,l.y*c+l.z*s,-l.y*s+l.z*c);
 }
+float squared(float x){return x*x;}
 float mask(float d){return 1.-step(0.,d);}
 float ellipse(vec2 p,vec2 r){return (length(p/r)-1.)*min(r.x,r.y);}
 float line(float d,float w){return 1.-smoothstep(w,w+.18,abs(d));}
@@ -66,7 +67,7 @@ vec4 arcadeFlame(vec2 uv,float beat){
  float y=g.y;
  if(y<0. || y>1.12)return vec4(0.);
  float x=g.x-.18*y*y*sin(beat+5.*y);
- float belly=.46*sqrt(max(0.,1.-pow((y-.31)/.69,2.)))*(1.-smoothstep(.28,1.,y));
+ float belly=.46*sqrt(max(0.,1.-squared((y-.31)/.69)))*(1.-smoothstep(.28,1.,y));
  float fork=.13*(1.-smoothstep(.23,.74,y));
  bool outer=abs(x)<belly || abs(x+.39-.14*y)<fork || abs(x-.34-.13*y)<fork*.85;
  if(!outer)return vec4(0.);
@@ -117,22 +118,6 @@ vec3 gestureStage(vec3 ray,float scene,float t){
  // Cylindrical lanes repeat at whole turns so the join behind the audience is invisible.
  float turn=az/(2.*PI)+.5;
  if(scene==3.){
-   float tide=.48+.045*sin(az*5.+t*2.);
-   vec3 c=el>tide?vec3(.13,.30,.43):mix(vec3(.025,.13,.23),vec3(.08,.55,.60),smoothstep(-.4,.52,el));
-   if(abs(el-tide)<.014)c=mint;
-   float x=(fract(turn*4.)-.5)*1.57;
-   float bite=pow(max(0.,cos(t*2.)),8.);
-   vec2 bob=vec2(.13,.49-.09*bite+.025*sin(t*4.));
-   if(stroke(vec2(x,el),vec2(-.36,.90),bob,.008)>.5)c=cream;
-   vec2 d=vec2(x,el)-bob;
-   if(length(d*vec2(1.,.8))<.045)c=d.y>0.?pink:cream;
-   vec2 fish=vec2(x-.13-.43*sin(t*2.),el-(bob.y-.18+.13*bite));
-   fish.x*=cos(t*2.)<0.?-1.:1.;
-   if(length(fish/vec2(.115,.059))<1. || (fish.x<-.075 && fish.x>-.17 && abs(fish.y)<(-.073-fish.x)*.64))c=cream;
-   if(length(fish-vec2(.069,.018))<.014)c=night;
-   return c;
- }
- if(scene==4.){
    vec3 c=mix(vec3(.07,.13,.28),vec3(.21,.28,.48),smoothstep(.15,1.5,el));
    float lane=floor(turn*32.);
    float v=fract(t*1.45+.47*sin(lane*13.));
@@ -254,7 +239,7 @@ void main(){
   col=mix(col,uColor*.99,lid);
   vec2 b=q-vec2(side*uDetails.z,16.6+uExpression.w*1.35+uExtra.x);
   float bx=clamp(b.x,-7.,7.);
-  float arch=.85*(1.-pow(bx/7.4,2.));float slope=side*uDetails.x*.32;
+  float arch=.85*(1.-squared(bx/7.4));float slope=side*uDetails.x*.32;
   float brow=mask(length(vec2(b.x-bx,b.y-arch-slope*bx))-.92);
   col=mix(col,ink,brow);
  }
@@ -262,7 +247,7 @@ void main(){
  float opening=uExpression.z,smile=uExpression.y;
  if(uRoutine.y>0.){m.x*=3.;opening=.3;smile=0.;}
  float width=mix(8.8,11.6,smoothstep(.1,.65,opening));width=mix(width,4.6,smoothstep(.78,1.,opening));
- float curve=smile*(4.3*pow(m.x/max(width,1.),2.)-1.8);
+ float curve=smile*(4.3*squared(m.x/max(width,1.))-1.8);
  vec2 mp=vec2(m.x,m.y-curve),mr=vec2(width,.48+opening*5.0);
  float mouth=mask(ellipse(mp,mr));
  col=mix(col,mix(ink,vec3(.95,.035,.24),uRoutine.y),mouth);
@@ -270,7 +255,7 @@ void main(){
  col=mix(col,vec3(1.,.98,.88),teeth);
  float tongue=mask(ellipse(mp+vec2(0.,mr.y*.73),vec2(width*.56,max(.4,mr.y*.32))))*mouth*smoothstep(.4,.6,opening)*(1.-smoothstep(.85,1.,opening));
  col=mix(col,vec3(1.,.27,.36),tongue);
- float cheek=exp(-pow((abs(q.x)-23.)/3.3,2.)-pow((q.y+4.)/2.4,2.));
+ float cheek=exp(-squared((abs(q.x)-23.)/3.3)-squared((q.y+4.)/2.4));
  col=mix(col,vec3(1.,.28,.19),cheek*.08*max(smile,0.));
  }
 

@@ -128,3 +128,23 @@ it("requires both fingertip joins and fires once per held heart in either contro
     expect(c.update(pair,3350,s).actions).toEqual([fire]);
   }
 });
+
+it("routes each held pair directly into its animated scene in both modes", () => {
+  for (const navigationMode of ["gestures", "position"] as const) {
+    for (const [pose, id] of Object.entries({Thumb_Up:1, Closed_Fist:2, Open_Palm:3, Victory:4, Thumb_Down:0})) {
+      const controller = new HandInputController();
+      const store = new StateStore();
+      store.settings.navigationMode = navigationMode;
+      const hands = [detection("Left", pose), detection("Right", pose)];
+      for (const time of [0, 350, 700, 900]) {
+        store.time = time;
+        const { actions } = controller.update(hands, time, store.settings);
+        if (id && time !== 700) expect(actions).toEqual([]);
+        actions.forEach(action => store.dispatch(action));
+      }
+      const frame = store.animator.sample(1200, store.settings);
+      expect(frame.scene).toBe(id);
+      if (id) expect(frame.sceneTime).toBe(.5);
+    }
+  }
+});
