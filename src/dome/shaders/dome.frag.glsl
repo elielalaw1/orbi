@@ -23,11 +23,11 @@ vec3 roomDir(vec2 p){
 float mask(float d){return 1.-step(0.,d);}
 float ellipse(vec2 p,vec2 r){return (length(p/r)-1.)*min(r.x,r.y);}
 float line(float d,float w){return 1.-smoothstep(w,w+.18,abs(d));}
-// Room-space water. The rear-biased edge levels out into an overhead pool.
+// Keep the waterline tilted toward the rear as it advances to the front.
 float floodDepth(vec3 ray, float t){
- float height=-.54+.75*smoothstep(3.,31.,t)+.50*smoothstep(31.,94.,t)
-   +.43*smoothstep(96.,115.,t);
- float backBias=.94*(1.-smoothstep(18.,82.,t));
+ float height=-.62+.77*smoothstep(3.,35.,t)+.84*smoothstep(35.,95.,t)
+   +.46*smoothstep(95.,116.,t);
+ float backBias=.86;
  vec2 ripple=ray.xy*12.;
  float swell=.018*sin(ripple.x+t*.85)+.013*sin(ripple.y*1.4-t*.65)
    +.008*sin(dot(ripple,vec2(1.2,-.72))+t*1.1);
@@ -50,7 +50,9 @@ vec3 floodWater(vec3 color, vec3 ray, float t, float depth){
  pool+=vec3(.09,.52,.67)*daylight*(caustic*.37+filigree*.16);
  pool+=vec3(.012,.065,.13)*glancing*(.7+.3*sin(wave));
  // Transmit the character through blue glass until the last light goes out.
- vec3 transmitted=mix(color*vec3(.20,.63,.83),pool,.44+.48*smoothstep(.18,.55,depth));
+ float opacity=mix(.30,.94,smoothstep(.035,.48,depth));
+ opacity=mix(opacity,1.,smoothstep(106.,117.,t));
+ vec3 transmitted=mix(color*vec3(.82,.92,.90),pool,opacity);
  return mix(color,transmitted,submerged)+vec3(.17,.65,.84)*edge*.40;
 }
 void main(){
@@ -80,9 +82,7 @@ void main(){
  // Sample facial geometry on a grid that moves with the character.
  q=(floor(q/1.15)+.5)*1.15;
  // Oversized animation-style eyes and a simple grin; the architecture is the head.
- float lightBand=smoothstep(.0,.7,dot(rd,normalize(vec3(-.3,.5,.8))));
  vec3 col=gold;
- if(uFloodTime>=0.) col=mix(vec3(.013,.026,.051),vec3(.037,.080,.125),lightBand);
  vec3 dryBackground=col;
  vec3 ink=vec3(.075,.052,.12);
  if(f>0.&&abs(q.x)<30.&&abs(q.y)<25.){

@@ -11,7 +11,6 @@ const ease = (value: number) => {
 
 const acceptance: Expression = {
   ...presets.sad,
-  color: [0.17, 0.53, 0.66],
   eye: 0.46,
   smile: -0.14,
   open: 0,
@@ -21,7 +20,7 @@ const acceptance: Expression = {
 const route = [
   [0, 0, 20], [21, 0, 20], [30, -66, 30], [39, 67, 35],
   [48, -54, 49], [58, 72, 56], [69, -44, 66], [79, 24, 76],
-  [90, 0, 58], [102, 0, 43], [120, 0, 43],
+  [86, 45, 54], [95, 0, 20], [120, 0, 20],
 ];
 
 export function floodFrame(frame: Frame, seconds: number): Frame {
@@ -36,7 +35,10 @@ export function floodFrame(frame: Frame, seconds: number): Frame {
   const [masterX, masterY] = roomToMaster(az, el);
   const alert = blend(presets.neutral, presets.surprised, ease((seconds - 11) / 15));
   const strain = blend(alert, presets.angry, panic * (0.26 + 0.24 * Math.sin(seconds * 0.76)));
-  const expression = blend(strain, acceptance, ease((seconds - 77) / 21));
+  const expression = {
+    ...blend(strain, acceptance, ease((seconds - 83) / 17)),
+    color: presets.neutral.color,
+  };
   return {
     ...frame,
     position: { ...frame.position, az, el, masterX, masterY, roll: 0, lean: panic * 0.08 * Math.sin(seconds * 1.8) },
