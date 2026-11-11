@@ -251,6 +251,16 @@ void main(){
   float arch=.85*(1.-squared(bx/7.4));float slope=side*uDetails.x*.32;
   float brow=mask(length(vec2(b.x-bx,b.y-arch-slope*bx))-.92);
   col=mix(col,ink,brow);
+  if(uFloodTime>=98.){
+    float death=smoothstep(98.,103.,uFloodTime);
+    // Clear the closing eyelid, then draw two broad stepped diagonals.
+    float eyePatch=mask(ellipse(ep,vec2(9.6,10.8)));
+    col=mix(col,gold,eyePatch*death);
+    float crossed=max(
+      stroke(ep,vec2(-5.,-5.),vec2(5.,5.),1.7),
+      stroke(ep,vec2(-5.,5.),vec2(5.,-5.),1.7));
+    col=mix(col,ink,crossed*death);
+  }
  }
  vec2 m=(q-vec2(0,-8.5))/vec2(uDetails.w,1.);
  float opening=uExpression.z,smile=uExpression.y;
