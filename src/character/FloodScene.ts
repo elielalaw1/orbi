@@ -2,7 +2,7 @@ import type { Frame } from "./FaceAnimator";
 import { blend, presets, type Expression } from "./EmotionPresets";
 import { roomToMaster } from "../dome/ProjectionMath";
 
-export const FLOOD_DURATION = 90;
+export const FLOOD_DURATION = 45;
 const AUTHORED_DURATION = 120;
 
 // The route, expressions and shader share the original choreography clock.
