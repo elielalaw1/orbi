@@ -57,7 +57,7 @@ export const defaults: Settings = {
   navigationMode: "gestures",
   brightness: 0.84,
   speed: 1,
-  resolution: 1024,
+  resolution: 768,
   guides: false,
   audio: false,
   volume: 0.18,

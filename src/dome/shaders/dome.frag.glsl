@@ -26,6 +26,14 @@ void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
  vec3 forward=vec3(sin(a)*cos(e),cos(a)*cos(e),sin(e));
+ // Outside the face footprint the dome has one flat colour.
+ // The 40-degree radius encloses the 30 by 25 degree facial bounds.
+ vec3 gold=mix(vec3(1.,.76,.09),uColor,.16);
+ float faceRadius=40.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
+ if(!uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
+   frag=vec4(clamp(gold*uBrightness,0.,1.),1.);
+   return;
+ }
  // Project the room right axis into the tangent plane; stable across the zenith.
  vec3 right=normalize(vec3(1.,0.,0.)-forward*forward.x),up=cross(right,forward);
  float f=dot(rd,forward);vec2 tangent=vec2(dot(rd,right),dot(rd,up));
@@ -36,7 +44,6 @@ void main(){
  q=(floor(q/1.15)+.5)*1.15;
  // Oversized animation-style eyes and a simple grin; the architecture is the head.
  float lightBand=smoothstep(.0,.7,dot(rd,normalize(vec3(-.3,.5,.8))));
- vec3 gold=mix(vec3(1.,.76,.09),uColor,.16);
  vec3 col=gold;
  vec3 ink=vec3(.075,.052,.12);
  if(f>0.&&abs(q.x)<30.&&abs(q.y)<25.){
