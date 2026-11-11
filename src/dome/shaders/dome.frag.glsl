@@ -25,37 +25,88 @@ float squared(float x){return x*x;}
 float mask(float d){return 1.-step(0.,d);}
 float ellipse(vec2 p,vec2 r){return (length(p/r)-1.)*min(r.x,r.y);}
 float line(float d,float w){return 1.-smoothstep(w,w+.18,abs(d));}
-// Keep the waterline tilted toward the rear as it advances to the front.
+// Room-space wave height and slope. The same waves shape the shoreline,
+ // bend the face and distort the view through the pool's surface.
+vec3 waterWave(vec2 p, float t){
+ vec2 k1=vec2(3.1,1.7),k2=vec2(-2.4,4.8),k3=vec2(7.2,-3.3);
+ float a=dot(p,k1)-t*.88,b=dot(p,k2)+t*1.13,c=dot(p,k3)-t*1.74;
+ float height=.032*sin(a)+.018*sin(b)+.009*sin(c);
+ vec2 slope=.032*k1*cos(a)+.018*k2*cos(b)+.009*k3*cos(c);
+ return vec3(height,slope);
+}
 float floodDepth(vec3 ray, float t){
  float height=-.62+.77*smoothstep(3.,35.,t)+.84*smoothstep(35.,95.,t)
    +.46*smoothstep(95.,116.,t);
- float backBias=.86;
- vec2 ripple=ray.xy*12.;
- float swell=.018*sin(ripple.x+t*.85)+.013*sin(ripple.y*1.4-t*.65)
-   +.008*sin(dot(ripple,vec2(1.2,-.72))+t*1.1);
- return height-ray.z-backBias*ray.y+swell;
+ return height-ray.z-.86*ray.y+waterWave(ray.xy*2.2,t).x;
+}
+vec2 waterHash(vec2 cell){
+ return fract(sin(vec2(dot(cell,vec2(127.1,311.7)),
+                       dot(cell,vec2(269.5,183.3))))*43758.5453);
+}
+// The gap between the nearest two moving cells traces a net of focused light.
+float causticNet(vec2 uv,float t){
+ vec2 cell=floor(uv),local=fract(uv);
+ float nearest=10.,second=10.;
+ for(int y=-1;y<=1;y++){
+  for(int x=-1;x<=1;x++){
+   vec2 offset=vec2(float(x),float(y));
+   vec2 seed=waterHash(cell+offset);
+   vec2 point=offset+.5+.34*sin(seed*6.28318+t*vec2(.84,.71));
+   vec2 delta=point-local;
+   float distance=dot(delta,delta);
+   second=min(second,max(nearest,distance));
+   nearest=min(nearest,distance);
+  }
+ }
+ return exp(-11.*max(0.,second-nearest));
+}
+vec3 risingBubbles(vec3 ray,float t,float depth){
+ float azimuth=atan(ray.x,ray.y)/6.2831853+.5;
+ float elevation=asin(clamp(ray.z,-1.,1.));
+ vec3 light=vec3(0.);
+ // Angular layers have different sizes and rise speeds. Azimuth wraps at the rear.
+ for(int layer=0;layer<3;layer++){
+  float k=float(layer),columns=16.+k*9.;
+  vec2 grid=vec2(azimuth*columns,elevation*(3.2+k*1.6)-t*(.40+k*.13));
+  vec2 cell=floor(grid);
+  vec2 seed=waterHash(vec2(mod(cell.x,columns),cell.y)+k*39.7);
+  vec2 centre=vec2(.5+.11*sin(t*1.8+seed.x*19.),.22+.56*seed.y);
+  vec2 local=(fract(grid)-centre)*vec2(1.,1.27);
+  float radius=mix(.029,.13,seed.y)/(1.+k*.24);
+  float distance=length(local)/radius;
+  float rim=smoothstep(.69,.88,distance)*(1.-smoothstep(.92,1.08,distance));
+  float glint=1.-smoothstep(.09,.32,length(local/radius-vec2(-.35,.55)));
+  float shell=(rim*(.30+.32*max(0.,local.y/radius))+glint*.85);
+  float visibility=step(.40+k*.10,seed.x)*smoothstep(.015,.16,depth);
+  light+=vec3(.49,.84,.96)*shell*visibility/(1.+k*.44);
+ }
+ return light;
 }
 vec3 floodWater(vec3 color, vec3 ray, float t, float depth){
- float submerged=smoothstep(-.018,.035,depth);
- float edge=exp(-abs(depth)*100.);
- // Intersect upward rays with a rippling plane above the viewer.
- float surfaceDistance=min(5.,.69/max(ray.z,.14));
- vec2 plane=ray.xy*surfaceDistance;
- vec2 warp=vec2(sin(plane.y*8.+t*.85),sin(plane.x*7.-t*.72));
- vec2 uv=plane*10.+warp*.8;
- float wave=sin(uv.x+t*.47)+sin(uv.y-t*.55)+.55*sin(uv.x*.64+uv.y*.74+t*.8);
- float caustic=pow(1.-abs(sin(wave*2.7)),13.);
- float filigree=pow(1.-abs(sin(wave*2.7+.22*sin(uv.y))),22.);
- float daylight=smoothstep(.01,.95,ray.z);
- float glancing=pow(1.-max(0.,ray.z),3.);
- vec3 pool=mix(vec3(.006,.062,.19),vec3(.025,.35,.62),daylight);
- pool+=vec3(.09,.52,.67)*daylight*(caustic*.37+filigree*.16);
- pool+=vec3(.012,.065,.13)*glancing*(.7+.3*sin(wave));
- // Transmit the character through blue glass until the last light goes out.
- float opacity=mix(.30,.94,smoothstep(.035,.48,depth));
+ if(depth<-.08)return color;
+ float submerged=smoothstep(-.019,.036,depth);
+ float edge=exp(-abs(depth)*135.);
+ float crest=exp(-abs(depth-.026)*51.);
+ vec2 plane=ray.xy*min(4.8,.73/max(ray.z,.13));
+ vec3 wave=waterWave(plane*2.8,t);
+ vec3 normal=normalize(vec3(-wave.yz*1.7,1.));
+ float incidence=max(0.,dot(ray,normal));
+ float reflection=pow(1.-incidence,4.);
+ vec2 distorted=plane*7.+wave.yz*2.6;
+ float caustic=causticNet(distorted,t);
+ float daylight=smoothstep(-.04,.85,ray.z);
+ float shafts=pow(max(0.,sin(distorted.x*.81+distorted.y*.56)),5.);
+ vec3 pool=mix(vec3(.005,.055,.16),vec3(.065,.40,.59),daylight);
+ pool=mix(pool,vec3(.013,.105,.24),reflection*.66);
+ pool+=vec3(.27,.62,.72)*caustic*(.13+.48*daylight);
+ pool+=vec3(.035,.21,.30)*shafts*daylight;
+ float opacity=mix(.27,.92,smoothstep(.035,.48,depth));
  opacity=mix(opacity,1.,smoothstep(106.,117.,t));
- vec3 transmitted=mix(color*vec3(.82,.92,.90),pool,opacity);
- return mix(color,transmitted,submerged)+vec3(.17,.65,.84)*edge*.40;
+ vec3 transmitted=mix(color*vec3(.78,.91,.92),pool,opacity);
+ vec3 bubbles=risingBubbles(ray,t,depth);
+ float foam=pow(max(0.,.5+.5*sin(distorted.x*13.+sin(distorted.y*9.))),5.);
+ return mix(color,transmitted+bubbles,submerged)
+   +vec3(.38,.76,.84)*(edge*.36+crest*foam*.20);
 }
 float stroke(vec2 p, vec2 a, vec2 b, float width){
  vec2 axis=b-a;
@@ -199,7 +250,7 @@ void main(){
  if(uFloodTime>=0.){
   waterDepth=floodDepth(rd,uFloodTime);
   float wet=smoothstep(-.025,.075,waterDepth);
-  q+=wet*vec2(sin(rd.z*39.+uFloodTime*1.4),sin(rd.x*31.-uFloodTime*1.1))*.54;
+  q+=wet*waterWave(rd.xy*7.,uFloodTime).yz*3.4;
  }
  q/=uFace.z*uMotion.w;q.x/=1.+uExtra.y;q.y*=1.+uExtra.y;
  // Sample facial geometry on a grid that moves with the character.
