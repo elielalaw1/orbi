@@ -17,7 +17,7 @@ it('releases microphone preflight before recognition and dispatches only final E
  vi.useFakeTimers();const s=setup();const button=s.elements[1];
  await button.onclick();expect(s.track.stop).toHaveBeenCalledOnce();expect(s.recognizers).toHaveLength(0);
  await vi.advanceTimersByTimeAsync(250);const r=s.recognizers[0];expect(r.lang).toBe('en-US');
- const interim:any=[{transcript:'take a lap'}];interim.isFinal=false;r.onresult({resultIndex:0,results:[interim]});expect(s.dispatch).not.toHaveBeenCalled();
+ const interim:any=[{transcript:'run'}];interim.isFinal=false;r.onresult({resultIndex:0,results:[interim]});expect(s.dispatch).not.toHaveBeenCalled();
  interim.isFinal=true;r.onresult({resultIndex:0,results:[interim]});expect(s.dispatch).toHaveBeenCalledWith({type:'routine',value:'lap'});
  r.onerror({error:'no-speech'});r.onend();await vi.advanceTimersByTimeAsync(500);expect(s.recognizers).toHaveLength(2);
  s.voice.stop();s.recognizers[1].onend();await vi.advanceTimersByTimeAsync(1000);expect(s.recognizers).toHaveLength(2);

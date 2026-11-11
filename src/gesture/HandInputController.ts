@@ -1,5 +1,5 @@
 import type { Action, Settings } from "../app/types";
-import type { Landmark } from "./CustomGestures";
+import { heartHands, type Landmark } from "./CustomGestures";
 import { GestureNavigator, palmCenter, indexDirection } from "./GestureNavigator";
 import { PointingController } from "./PointingController";
 import { GestureController } from "./GestureController";
@@ -18,7 +18,23 @@ export class HandInputController {
   private lastPalm: { x: number; y: number } | null = null;
   private hadLeft = false;
   private initialized = false;
+  private heartSince: number | null = null;
+  private heartFired = false;
   update(hands: HandDetection[], now: number, s: Settings) {
+    if (hands.length === 2 && hands.every(h=>h.handednessScore >= .55) &&
+        heartHands(hands[0].landmarks,hands[1].landmarks)) {
+      this.heartSince ??= now;
+      const actions: Action[] = [];
+      if (!this.heartFired && now-this.heartSince >= 650) {
+        actions.push({type:"routine",value:"flirt"});
+        this.heartFired = true;
+      }
+      this.pair = "";
+      const label = this.heartFired ? "Heart · flirt" : "Hold your heart";
+      return {actions,controlIndex:0,label,positionLabel:label,score:Math.min(...hands.map(h=>h.handednessScore))};
+    }
+    this.heartSince = null;
+    this.heartFired = false;
     if (s.navigationMode === "gestures") return this.updateCommands(hands, now, s);
     const controlIndex = hands.reduce(
       (best, h, i) =>
@@ -131,6 +147,7 @@ export class HandInputController {
     return { actions, controlIndex, label: positionLabel, score: valid[0]?.handednessScore ?? 0, positionLabel };
   }
   clear() {
+    this.heartSince=null;this.heartFired=false;
     this.pair='';this.pairFired=false;
     this.left.clear();
     this.position.clear();

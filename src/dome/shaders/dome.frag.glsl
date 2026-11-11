@@ -77,6 +77,90 @@ vec4 arcadeFlame(vec2 uv,float beat){
  if(inner<.27 && y<.31)color=vec3(1.,.95,.48);
  return vec4(color,1.);
 }
+// The circular field is measured from the room zenith, independent of projector tilt.
+vec3 gestureStage(vec3 ray,float scene,float t){
+ float el=asin(clamp(ray.z,-1.,1.));
+ float az=atan(ray.x,ray.y+.000001);
+ float radius=(.5*PI-el)/1.57;
+ vec2 sky=ray.xy/max(.00001,length(ray.xy))*radius;
+ vec3 night=vec3(.045,.055,.16),mint=vec3(.26,.97,.84),pink=vec3(1.,.29,.55);
+ vec3 cream=vec3(1.,.94,.65);
+ if(scene==1.){
+   // Four bumpers around the crown. The ball takes a bowed chord from one to the next.
+   float hop=t*1.55,k=floor(hop),u=fract(hop);
+   vec2 a=vec2(cos(k*PI*.5),sin(k*PI*.5))*.62;
+   vec2 b=vec2(-a.y,a.x);
+   vec2 ball=mix(a,b,u)*(1.-.65*sin(PI*u));
+   vec2 prev=mix(a,b,max(0.,u-.16))*(1.-.65*sin(PI*max(0.,u-.16)));
+   vec3 c=mix(night,vec3(.21,.10,.36),step(.5,fract(radius*12.))*.34);
+   if(abs(radius-.92)<.021)c=fract(az*12./PI-t)>.45?pink:mint;
+   vec2 hub=abs(sky);float d=length(vec2(max(hub.x,hub.y)-.62,min(hub.x,hub.y)));
+   if(d<.105)c=d<.06?pink:cream;
+   if(abs(length(sky-a)-(.09+.21*u))<.014 && u<.63)c=mint;
+   if(stroke(sky,prev,ball,.026)>.5)c=pink;
+   if(length(sky-ball)<.049)c=cream;
+   return c;
+ }
+ if(scene==2.){
+   vec3 c=night+vec3(.06,.025,.12)*(1.-min(radius,1.));
+   vec2 stars=fract(sky*15.+.23)-.5;
+   if(length(stars)<.072 && sin(dot(floor(sky*15.+.23),vec2(41.,17.)))>.2)c=cream;
+   float orbit=length(sky*vec2(1.,1.45));
+   if(abs(orbit-.69)<.009)c=vec3(.21,.31,.49);
+   vec2 moon=sky-.69*vec2(cos(t*1.24),sin(t*1.24)/1.45);
+   if(length(moon)<.09)c=length(moon+vec2(.031,.02))<.032?vec3(.55,.34,.45):cream;
+   vec2 planet=sky-vec2(.0,.02);
+   if(length(planet)<.22)c=mix(pink,cream,.36*step(.48,fract(planet.y*22.+.3*sin(planet.x*11.))));
+   if(abs(length(vec2(planet.x,(planet.y+planet.x*.32)*4.))-.29)<.021 && (planet.y+planet.x*.32<0.||length(planet)>.22))c=mint;
+   return c;
+ }
+ // Cylindrical lanes repeat at whole turns so the join behind the audience is invisible.
+ float turn=az/(2.*PI)+.5;
+ if(scene==3.){
+   float tide=.48+.045*sin(az*5.+t*2.);
+   vec3 c=el>tide?vec3(.13,.30,.43):mix(vec3(.025,.13,.23),vec3(.08,.55,.60),smoothstep(-.4,.52,el));
+   if(abs(el-tide)<.014)c=mint;
+   float x=(fract(turn*4.)-.5)*1.57;
+   float bite=pow(max(0.,cos(t*2.)),8.);
+   vec2 bob=vec2(.13,.49-.09*bite+.025*sin(t*4.));
+   if(stroke(vec2(x,el),vec2(-.36,.90),bob,.008)>.5)c=cream;
+   vec2 d=vec2(x,el)-bob;
+   if(length(d*vec2(1.,.8))<.045)c=d.y>0.?pink:cream;
+   vec2 fish=vec2(x-.13-.43*sin(t*2.),el-(bob.y-.18+.13*bite));
+   fish.x*=cos(t*2.)<0.?-1.:1.;
+   if(length(fish/vec2(.115,.059))<1. || (fish.x<-.075 && fish.x>-.17 && abs(fish.y)<(-.073-fish.x)*.64))c=cream;
+   if(length(fish-vec2(.069,.018))<.014)c=night;
+   return c;
+ }
+ if(scene==4.){
+   vec3 c=mix(vec3(.07,.13,.28),vec3(.21,.28,.48),smoothstep(.15,1.5,el));
+   float lane=floor(turn*32.);
+   float v=fract(t*1.45+.47*sin(lane*13.));
+   float x=(fract(turn*32.)-.5);
+   float h=mix(1.19,.04,v);
+   if(el<1.2 && abs(x-(el-h)*1.7)<.105 && abs(el-h)<.07)c=mint;
+   float splash=max(0.,(v-.78)/.22);
+   if(splash>0. && abs(abs(x)-splash*.46)<.08 && abs(el-.04-.065*sin(splash*PI))<.02)c=cream;
+   float cloud=1.10+.07*cos(az*12.+t*.5)+.045*cos(az*7.-t*.3);
+   if(el>cloud)c=mix(vec3(.34,.39,.57),vec3(.65,.73,.83),smoothstep(cloud,cloud+.18,el));
+   return c;
+ }
+ // Three ghosts chase pellets around a scalloped arcade track.
+ float track=.64+.10*cos(az*3.);
+ vec3 c=night;
+ if(abs(abs(radius-track)-.18)<.017)c=vec3(.25,.30,.75);
+ float chase=turn*3.-t*.40;
+ float dx=(fract(chase+.5)-.5)*2.09*track;
+ vec2 g=vec2(dx,track-radius+.022*sin(t*8.));
+ if(abs(radius-track)<.023 && abs(fract(turn*39.)-.5)<.13 && fract(chase)>.12)c=cream;
+ if(length(vec2(g.x,max(g.y,0.)))<.115 && g.y>-.085+.023*cos(g.x*83.+floor(t*8.))){
+   c=mix(mint,pink,.5+.5*cos(floor(chase+.5)*2.*PI/3.));
+   vec2 eye=vec2(abs(g.x)-.045,g.y-.032);
+   if(length(eye)<.025)c=cream;
+   if(length(vec2(abs(g.x-.009)-.045,eye.y))<.012)c=night;
+ }
+ return c;
+}
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -106,33 +190,16 @@ void main(){
    float band=fract(arc*3.1831-uRoutine.w*.85+floor(length(pixel)*28.)*.21);
    gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*step(.76,band)*step(.62,fract(length(pixel)*28.))*smoothstep(.15,.9,length(p)));
  }
- vec2 tile=floor(p*100.)/100.;
  float sceneTime=uScene.y;
  float envelope=smoothstep(0.,.6,sceneTime)*(1.-smoothstep(7.,8.,sceneTime));
- vec3 effect=gold;
- if(uScene.x==1.){
-   vec2 ball=.76*(abs(fract(vec2(.5)+sceneTime*vec2(.27,.19))*4.-2.)-1.);
-   vec2 bumper=abs(tile)-vec2(.53,.36);
-   if(length(bumper)<.085)effect=length(bumper)<.057?vec3(.97,.31,.48):vec3(.24,.12,.32);
-   if(length(tile-ball)<.052)effect=vec3(.93,.98,1.);
- }else if(uScene.x==3.){
-   vec2 bob=vec2(.43+.09*sin(sceneTime*2.),-.32+.05*cos(sceneTime*4.));
-   if(tile.y<bob.y+.035*sin(tile.x*18.+sceneTime*3.))effect=mix(gold,vec3(.08,.52,.66),.67);
-   if(stroke(tile,vec2(.05,-.05),bob,.009)>.5)effect=vec3(.17,.13,.14);
-   if(length(tile-bob)<.043)effect=tile.y>bob.y?vec3(.98,.21,.12):vec3(1.);
-   vec2 fish=tile-vec2(.65*sin(sceneTime),bob.y-.15);
-   if(length(fish/vec2(.11,.045))<1. || length((fish+vec2(.12,0.))/vec2(.035,.047))<1.)effect=vec3(.08,.28,.36);
- }else if(uScene.x==4.){
-   vec2 drop=fract(tile*vec2(17.,5.)+vec2(0.,sceneTime*2.+sin(floor(tile.x*17.)*7.)));
-   if(drop.x<.17&&drop.y<.28)effect=vec3(.34,.74,.95);
- }else if(uScene.x==5.){
-   vec2 ghost=tile-vec2(.63*sin(sceneTime*1.5),.36*cos(sceneTime*2.));
-   if(length(vec2(ghost.x,max(ghost.y,0.)))<.12&&ghost.y>-.09+.023*cos(ghost.x*85.)){
-    effect=vec3(.13,.66,.95);
-    if(length(vec2(abs(ghost.x)-.041,ghost.y-.027))<.021)effect=vec3(1.);
-   }
+ if(uScene.x>0. && envelope>0.){
+   // Quantize the dome sample, then recover its calibrated direction.
+   vec3 ray=roomDir((floor(p*160.)+.5)/160.);
+   vec3 stage=gestureStage(ray,uScene.x,sceneTime);
+   // Keep Orbi's yellow silhouette clear against the surrounding set.
+   float head=smoothstep(cos(radians(34.*uFace.z)),cos(radians(28.*uFace.z)),dot(rd,forward));
+   gold=mix(gold,stage,envelope*(1.-head));
  }
- gold=mix(gold,effect,envelope);
  float faceRadius=46.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
  if(uFloodTime<0. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
    frag=vec4(clamp(gold*uBrightness,0.,1.),1.);

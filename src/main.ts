@@ -84,7 +84,7 @@ function boot() {
     pip.id = "hand-preview";
     pip.hidden = true;
     pip.innerHTML =
-      '<div class="pip-header"><strong>Your camera</strong><button id="pip-hide" aria-label="Hide camera preview">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Point to choose a destination</div><div class="pip-legend">Point ← →: sides · both index fingers ↑: up<br>Point ↓: front · Peace: back · Fist: home<br>Hold matching hands: thumbs up = pinball · fists = zero gravity · thumbs down = fishing · palms = rain · peace signs = ghost</div>';
+      '<div class="pip-header"><strong>Your camera</strong><button id="pip-hide" aria-label="Hide camera preview">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Point to choose a destination</div><div class="pip-legend">Point ← →: sides · both index fingers ↑: up<br>Point ↓: front · Peace: back · Fist: home<br>Touch index tips and thumb tips to form a heart: flirt<br>Hold matching hands: thumbs up = pinball · fists = zero gravity · thumbs down = fishing · palms = rain · peace signs = ghost</div>';
     document.body.append(pip);
     $("pip-hide").onclick = () => {
       previewWanted = false;

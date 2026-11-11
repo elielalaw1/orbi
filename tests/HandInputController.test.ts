@@ -105,3 +105,26 @@ it('follows a visible left hand continuously without requiring a narrowly classi
  const c=new HandInputController();const h=detection('Left','None');h.landmarks=hand([5,9,13,17]);h.score=.1;h.landmarks[9]={x:.33,y:.5,z:0};
  const result=c.update([h],0,defaults);const action=result.actions.find(a=>a.type==='target');expect(action?.type).toBe('target');if(action?.type==='target')expect(action.value.x).toBeCloseTo(.9);
 });
+
+it("requires both fingertip joins and fires once per held heart in either control mode", () => {
+  for (const navigationMode of ["gestures","position"] as const) {
+    const c=new HandInputController(), s={...defaults,navigationMode};
+    const pair=[detection("Right","None"),detection("Left","None")];
+    for(const [i,h] of pair.entries()){
+      const side=i===0?-1:1;
+      for(const [n,x,y] of [[0,.5+side*.20,.70],[9,.5+side*.17,.53],
+        [5,.5+side*.13,.5],[6,.5+side*.10,.39],[8,.5+side*.01,.42],[4,.5+side*.01,.59]])
+        h.landmarks[n]={x,y,z:0};
+    }
+    const fire={type:"routine",value:"flirt"};
+    expect(c.update(pair,0,s).actions).toEqual([]);
+    expect(c.update([...pair].reverse(),660,s).actions).toEqual([fire]);
+    expect(c.update(pair,1600,s).actions).toEqual([]);
+    pair[0].landmarks[4].x=.26;
+    expect(c.update(pair,1800,s).actions).not.toContainEqual(fire);
+    expect(c.update(pair,2600,s).actions).not.toContainEqual(fire);
+    pair[0].landmarks[4].x=.49;
+    expect(c.update(pair,2650,s).actions).toEqual([]);
+    expect(c.update(pair,3350,s).actions).toEqual([fire]);
+  }
+});

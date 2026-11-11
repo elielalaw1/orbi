@@ -47,3 +47,18 @@ export function isolatedIndex(l: Landmark[]) {
     [9, 13, 17].every((b) => folded(l, b))
   );
 }
+
+// Test both joins and the open space between them in camera coordinates.
+// Neither MediaPipe's gesture label nor the left/right camera setting is needed.
+export function heartHands(a: Landmark[], b: Landmark[]) {
+  if (a.length !== 21 || b.length !== 21) return false;
+  const gap = (p: Landmark, q: Landmark) => Math.hypot(p.x-q.x,p.y-q.y);
+  const scale = (gap(a[0],a[9])+gap(b[0],b[9]))/2;
+  if (scale < .025) return false;
+  const [left,right] = a[5].x < b[5].x ? [a,b] : [b,a];
+  const mid = (a[8].x+b[8].x)/2;
+  return gap(a[8],b[8]) < .57*scale && gap(a[4],b[4]) < .57*scale
+    && [a,b].every(h=>h[4].y-h[8].y > .43*scale && h[4].y-h[8].y < 2.4*scale)
+    && mid-left[6].x > .24*scale && right[6].x-mid > .24*scale
+    && Math.abs(mid-(a[4].x+b[4].x)/2) < .64*scale;
+}

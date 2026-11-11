@@ -1,8 +1,7 @@
 import type { Action } from '../app/types';
-export function voiceCommand(text:string): 'lap'|'flirt'|null {
+export function voiceCommand(text:string): 'lap'|null {
  const phrase=text.toLowerCase().replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
- if (phrase==='take a lap'||phrase==='orbi take a lap') return 'lap';
- if (phrase==='flirt'||phrase==='orbi flirt') return 'flirt';
+ if (phrase==='run'||phrase==='orbi run') return 'lap';
  return null;
 }
 export function acceptedVoiceCommand(text:string,confidence?:number) {
@@ -23,8 +22,8 @@ export function installVoice(anchor:HTMLElement, dispatch:(a:Action)=>void) {
  const button=document.createElement('button');button.textContent='Start voice';panel.append(button);
  const test=document.createElement('button');test.textContent='Test microphone';panel.append(test);
  const meter=document.createElement('meter');meter.min=0;meter.max=1;meter.value=0;meter.setAttribute('aria-label','Microphone level');meter.hidden=true;panel.append(meter);
- const status=document.createElement('span');status.setAttribute('role','status');status.textContent='English: “take a lap” or “flirt”';panel.append(status);
- for(const [label,command] of [['Try lap','lap'],['Try flirt','flirt']] as const){const b=document.createElement('button');b.textContent=label;b.onclick=()=>dispatch({type:'routine',value:command});panel.append(b);}
+ const status=document.createElement('span');status.setAttribute('role','status');status.textContent='English: “run”';panel.append(status);
+ for(const [label,command] of [['Try run','lap'],['Try flirt','flirt']] as const){const b=document.createElement('button');b.textContent=label;b.onclick=()=>dispatch({type:'routine',value:command});panel.append(b);}
  const Speech=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;
  let wanted=false,recognition:any=null,restart:number|undefined,generation=0;
  let stream:MediaStream|null=null,context:AudioContext|null=null,frame=0;
@@ -38,7 +37,7 @@ export function installVoice(anchor:HTMLElement, dispatch:(a:Action)=>void) {
   if(!wanted)return;
   const current=new Speech();recognition=current;
   current.lang='en-US';current.continuous=true;current.interimResults=true;current.maxAlternatives=1;
-  current.onstart=()=>{if(wanted)status.textContent='Listening in English · say “take a lap” or “flirt”';};
+  current.onstart=()=>{if(wanted)status.textContent='Listening in English · say “run”';};
   current.onaudiostart=()=>{if(wanted)status.textContent='Microphone connected · speak now';};
   current.onspeechstart=()=>{if(wanted)status.textContent='Speech detected…';};
   current.onresult=(event:any)=>{
@@ -47,7 +46,7 @@ export function installVoice(anchor:HTMLElement, dispatch:(a:Action)=>void) {
     const spoken=event.results[i][0].transcript;
     if(!event.results[i].isFinal){status.textContent=`Hearing: ${spoken}`;continue;}
     const command=acceptedVoiceCommand(spoken,event.results[i][0].confidence);
-    status.textContent=command?`Heard: ${spoken}`:`Ignored: “${spoken}”. Please say exactly “take a lap” or “flirt” clearly.`;
+    status.textContent=command?`Heard: ${spoken}`:`Ignored: “${spoken}”. Please say exactly “run” clearly.`;
     if(command)dispatch({type:'routine',value:command});
    }
   };
