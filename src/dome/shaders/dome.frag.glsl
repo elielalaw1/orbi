@@ -3,6 +3,7 @@ precision highp float;
 out vec4 frag;
 uniform vec2 uRes;
 uniform vec4 uRoutine;
+uniform vec2 uScene;
 uniform vec3 uColor;
 uniform vec4 uExpression; // eye height, smile, mouth opening, eyebrow lift
 uniform vec4 uFace; // azimuth, elevation, scale, roll
@@ -105,6 +106,33 @@ void main(){
    float band=fract(arc*3.1831-uRoutine.w*.85+floor(length(pixel)*28.)*.21);
    gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*step(.76,band)*step(.62,fract(length(pixel)*28.))*smoothstep(.15,.9,length(p)));
  }
+ vec2 tile=floor(p*100.)/100.;
+ float sceneTime=uScene.y;
+ float envelope=smoothstep(0.,.6,sceneTime)*(1.-smoothstep(7.,8.,sceneTime));
+ vec3 effect=gold;
+ if(uScene.x==1.){
+   vec2 ball=.76*(abs(fract(vec2(.5)+sceneTime*vec2(.27,.19))*4.-2.)-1.);
+   vec2 bumper=abs(tile)-vec2(.53,.36);
+   if(length(bumper)<.085)effect=length(bumper)<.057?vec3(.97,.31,.48):vec3(.24,.12,.32);
+   if(length(tile-ball)<.052)effect=vec3(.93,.98,1.);
+ }else if(uScene.x==3.){
+   vec2 bob=vec2(.43+.09*sin(sceneTime*2.),-.32+.05*cos(sceneTime*4.));
+   if(tile.y<bob.y+.035*sin(tile.x*18.+sceneTime*3.))effect=mix(gold,vec3(.08,.52,.66),.67);
+   if(stroke(tile,vec2(.05,-.05),bob,.009)>.5)effect=vec3(.17,.13,.14);
+   if(length(tile-bob)<.043)effect=tile.y>bob.y?vec3(.98,.21,.12):vec3(1.);
+   vec2 fish=tile-vec2(.65*sin(sceneTime),bob.y-.15);
+   if(length(fish/vec2(.11,.045))<1. || length((fish+vec2(.12,0.))/vec2(.035,.047))<1.)effect=vec3(.08,.28,.36);
+ }else if(uScene.x==4.){
+   vec2 drop=fract(tile*vec2(17.,5.)+vec2(0.,sceneTime*2.+sin(floor(tile.x*17.)*7.)));
+   if(drop.x<.17&&drop.y<.28)effect=vec3(.34,.74,.95);
+ }else if(uScene.x==5.){
+   vec2 ghost=tile-vec2(.63*sin(sceneTime*1.5),.36*cos(sceneTime*2.));
+   if(length(vec2(ghost.x,max(ghost.y,0.)))<.12&&ghost.y>-.09+.023*cos(ghost.x*85.)){
+    effect=vec3(.13,.66,.95);
+    if(length(vec2(abs(ghost.x)-.041,ghost.y-.027))<.021)effect=vec3(1.);
+   }
+ }
+ gold=mix(gold,effect,envelope);
  float faceRadius=46.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
  if(uFloodTime<0. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
    frag=vec4(clamp(gold*uBrightness,0.,1.),1.);
@@ -131,6 +159,7 @@ void main(){
  if(f>0.&&abs(q.x)<30.&&abs(q.y)<25.){
  for(int i=0;i<2;i++){
   float side=i==0?-1.:1.;vec2 ep=q-vec2(side*uDetails.z,4.4);
+  if(uScene.x==2.)ep.y-=envelope*(4.+2.*side)*(.7+.3*sin(sceneTime*2.+side));
   float wink=i==1?uDetails.y:0.;
   float height=max(.32,10.4*uExpression.x*uMotion.z*(1.-wink*.96)*(1.+side*.025*uMotion.x));
   vec2 radii=vec2(8.6,height);

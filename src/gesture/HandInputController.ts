@@ -89,9 +89,21 @@ export class HandInputController {
     this.initialized = true;
     return { actions, controlIndex, label, score, positionLabel };
   }
+  private pair='';
+  private pairSince=0;
+  private pairFired=false;
   private updateCommands(hands: HandDetection[], now: number, s: Settings) {
     const valid = hands.filter(h => h.landmarks.length === 21 && h.handednessScore >= 0.55);
     const actions: Action[] = [];
+    const scenes={Thumb_Up:'pinball',Open_Palm:'rain',Closed_Fist:'gravity',Thumb_Down:'fishing',Victory:'ghost'} as const;
+    const pose=valid.length===2 && valid.every(h=>h.score>=s.confidence && h.gesture===valid[0].gesture) ? valid[0].gesture??'' : '';
+    if(pose!==this.pair){this.pair=pose;this.pairSince=now;this.pairFired=false;}
+    const scene=Object.hasOwn(scenes,pose)?scenes[pose as keyof typeof scenes]:undefined;
+    if(scene && now-this.pairSince>=650){
+      if(!this.pairFired)actions.push({type:'routine',value:scene});
+      this.pairFired=true;
+      return {actions,controlIndex:0,label:scene,score:valid[0].score,positionLabel:scene};
+    }
     let positionLabel = "No hand · returning home";
     let controlIndex = -1;
     if (!valid.length) {
@@ -119,6 +131,7 @@ export class HandInputController {
     return { actions, controlIndex, label: positionLabel, score: valid[0]?.handednessScore ?? 0, positionLabel };
   }
   clear() {
+    this.pair='';this.pairFired=false;
     this.left.clear();
     this.position.clear();
     this.navigator.clear();

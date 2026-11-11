@@ -5,8 +5,8 @@ import { SpatialAnimator } from "./SpatialAnimator";
 export class FaceAnimator {
   emotion = new EmotionStateMachine();
   spatial = new SpatialAnimator();
-  private routine: {kind:'lap'|'flirt';start:number;target?:[number,number]}|null=null;
-  startRoutine(kind:'lap'|'flirt',now:number){
+  private routine: {kind:'lap'|'flirt'|'pinball'|'gravity'|'fishing'|'rain'|'ghost';start:number;target?:[number,number]}|null=null;
+  startRoutine(kind:'lap'|'flirt'|'pinball'|'gravity'|'fishing'|'rain'|'ghost',now:number){
     const side = Math.random() < .5 ? -1 : 1;
     this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
   }
@@ -38,6 +38,7 @@ export class FaceAnimator {
     this.random = state.random;
   }
   sample(now: number, s: Settings) {
+    let scene=0, sceneTime=0;
     let run=0;
     let hearts=0,kiss=0,wink=0,bounce=0;
     if(this.routine){
@@ -50,9 +51,12 @@ export class FaceAnimator {
         const radius=.70+.045*stride*run;
         this.spatial.moveTo(Math.sin(phase)*radius,-Math.cos(phase)*radius,now,s);
         bounce=(stride-.45)*.095*run;
-      }else{
+      }else if(this.routine.kind==='flirt'){
         this.spatial.moveTo(...(this.routine.target ?? roomToMaster(50,20)),now,s);
         if(t>900){hearts=1;kiss=.7+.3*Math.sin(t*.008);wink=Math.pow(Math.max(0,Math.sin(t*.005)),8);}
+      }else{
+        scene=['pinball','gravity','fishing','rain','ghost'].indexOf(this.routine.kind)+1;
+        sceneTime=t/1000;
       }
     }
     this.emotion.tick(now, s);
@@ -75,7 +79,7 @@ export class FaceAnimator {
     expression.wink*=Math.pow(Math.max(0,Math.sin(now*.0018)),10);
     expression.wink=Math.max(expression.wink,wink);
     return {
-      hearts,kiss,run,seconds:now/1000,
+      scene,sceneTime,hearts,kiss,run,seconds:now/1000,
       expression,
       position,
       blink,

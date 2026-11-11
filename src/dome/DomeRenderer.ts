@@ -47,6 +47,7 @@ export class DomeRenderer {
     gl.enableVertexAttribArray(pos);
     gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
     for (const name of [
+      "uScene",
       "uRoutine",
       "uFloodTime",
       "uRes",
@@ -79,6 +80,7 @@ export class DomeRenderer {
     }
     gl.useProgram(this.program);
     gl.uniform1f(u("uFloodTime"), floodTime);
+    gl.uniform2f(u("uScene"),f.scene,f.sceneTime);
     gl.uniform4f(u("uRoutine"),f.hearts,f.kiss,f.run,f.seconds);
     gl.uniform2f(u("uRes"), resolution, resolution);
     gl.uniform3fv(u("uColor"), f.expression.color);
