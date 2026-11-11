@@ -48,6 +48,7 @@ export class DomeRenderer {
     gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
     for (const name of [
       "uRoutine",
+      "uFloodTime",
       "uRes",
       "uColor",
       "uExpression",
@@ -69,7 +70,7 @@ export class DomeRenderer {
       );
     });
   }
-  render(f: Frame, s: Settings, resolution = s.resolution) {
+  render(f: Frame, s: Settings, resolution = s.resolution, floodTime = -1) {
     const gl = this.gl,
       u = (n: string) => this.uniforms.get(n)!;
     if (this.canvas.width !== resolution) {
@@ -77,6 +78,7 @@ export class DomeRenderer {
       gl.viewport(0, 0, resolution, resolution);
     }
     gl.useProgram(this.program);
+    gl.uniform1f(u("uFloodTime"), floodTime);
     gl.uniform2f(u("uRoutine"),f.hearts,f.kiss);
     gl.uniform2f(u("uRes"), resolution, resolution);
     gl.uniform3fv(u("uColor"), f.expression.color);

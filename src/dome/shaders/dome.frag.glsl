@@ -11,6 +11,7 @@ uniform vec4 uMotion; // gaze x, gaze y, blink, breath
 uniform vec2 uExtra; // brow offset, lean
 uniform float uBrightness;
 uniform bool uGuides;
+uniform float uFloodTime;
 const float PI=3.14159265359;
 // Adapted from EX-03 Pulse, Wisdome 360, David Cuartielles. GPL-3.0.
 vec3 roomDir(vec2 p){
@@ -22,6 +23,36 @@ vec3 roomDir(vec2 p){
 float mask(float d){return 1.-step(0.,d);}
 float ellipse(vec2 p,vec2 r){return (length(p/r)-1.)*min(r.x,r.y);}
 float line(float d,float w){return 1.-smoothstep(w,w+.18,abs(d));}
+// Room-space water. The rear-biased edge levels out into an overhead pool.
+float floodDepth(vec3 ray, float t){
+ float height=-.54+.75*smoothstep(3.,31.,t)+.50*smoothstep(31.,94.,t)
+   +.43*smoothstep(96.,115.,t);
+ float backBias=.94*(1.-smoothstep(18.,82.,t));
+ vec2 ripple=ray.xy*12.;
+ float swell=.018*sin(ripple.x+t*.85)+.013*sin(ripple.y*1.4-t*.65)
+   +.008*sin(dot(ripple,vec2(1.2,-.72))+t*1.1);
+ return height-ray.z-backBias*ray.y+swell;
+}
+vec3 floodWater(vec3 color, vec3 ray, float t, float depth){
+ float submerged=smoothstep(-.018,.035,depth);
+ float edge=exp(-abs(depth)*100.);
+ // Intersect upward rays with a rippling plane above the viewer.
+ float surfaceDistance=min(5.,.69/max(ray.z,.14));
+ vec2 plane=ray.xy*surfaceDistance;
+ vec2 warp=vec2(sin(plane.y*8.+t*.85),sin(plane.x*7.-t*.72));
+ vec2 uv=plane*10.+warp*.8;
+ float wave=sin(uv.x+t*.47)+sin(uv.y-t*.55)+.55*sin(uv.x*.64+uv.y*.74+t*.8);
+ float caustic=pow(1.-abs(sin(wave*2.7)),13.);
+ float filigree=pow(1.-abs(sin(wave*2.7+.22*sin(uv.y))),22.);
+ float daylight=smoothstep(.01,.95,ray.z);
+ float glancing=pow(1.-max(0.,ray.z),3.);
+ vec3 pool=mix(vec3(.006,.062,.19),vec3(.025,.35,.62),daylight);
+ pool+=vec3(.09,.52,.67)*daylight*(caustic*.37+filigree*.16);
+ pool+=vec3(.012,.065,.13)*glancing*(.7+.3*sin(wave));
+ // Transmit the character through blue glass until the last light goes out.
+ vec3 transmitted=mix(color*vec3(.20,.63,.83),pool,.44+.48*smoothstep(.18,.55,depth));
+ return mix(color,transmitted,submerged)+vec3(.17,.65,.84)*edge*.40;
+}
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -30,7 +61,7 @@ void main(){
  // The 40-degree radius encloses the 30 by 25 degree facial bounds.
  vec3 gold=mix(vec3(1.,.76,.09),uColor,.16);
  float faceRadius=40.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
- if(!uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
+ if(uFloodTime<0. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
    frag=vec4(clamp(gold*uBrightness,0.,1.),1.);
    return;
  }
@@ -39,12 +70,20 @@ void main(){
  float f=dot(rd,forward);vec2 tangent=vec2(dot(rd,right),dot(rd,up));
  float angle=atan(length(tangent),f);vec2 q=length(tangent)>1e-6?tangent/length(tangent)*degrees(angle):vec2(0);
  float rot=radians(uFace.w);q=mat2(cos(rot),-sin(rot),sin(rot),cos(rot))*q;
+ float waterDepth=0.;
+ if(uFloodTime>=0.){
+  waterDepth=floodDepth(rd,uFloodTime);
+  float wet=smoothstep(-.025,.075,waterDepth);
+  q+=wet*vec2(sin(rd.z*39.+uFloodTime*1.4),sin(rd.x*31.-uFloodTime*1.1))*.54;
+ }
  q/=uFace.z*uMotion.w;q.x/=1.+uExtra.y;q.y*=1.+uExtra.y;
  // Sample facial geometry on a grid that moves with the character.
  q=(floor(q/1.15)+.5)*1.15;
  // Oversized animation-style eyes and a simple grin; the architecture is the head.
  float lightBand=smoothstep(.0,.7,dot(rd,normalize(vec3(-.3,.5,.8))));
  vec3 col=gold;
+ if(uFloodTime>=0.) col=mix(vec3(.013,.026,.051),vec3(.037,.080,.125),lightBand);
+ vec3 dryBackground=col;
  vec3 ink=vec3(.075,.052,.12);
  if(f>0.&&abs(q.x)<30.&&abs(q.y)<25.){
  for(int i=0;i<2;i++){
@@ -96,6 +135,10 @@ void main(){
  col=mix(col,vec3(1.,.28,.19),cheek*.08*max(smile,0.));
  }
 
+ if(uFloodTime>=0.){
+  col=mix(col,dryBackground,smoothstep(104.,113.,uFloodTime));
+  col=floodWater(col,rd,uFloodTime,waterDepth);
+ }
  if(uGuides){
  float el=degrees(asin(clamp(rd.z,-1.,1.))),az=degrees(atan(rd.x,rd.y));
  float comfort=max(abs(az)-60.,max(-16.-el,el-45.));

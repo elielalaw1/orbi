@@ -2,6 +2,7 @@ import type { FaceAnimator, Frame } from "../character/FaceAnimator";
 import type { Settings } from "./types";
 export interface Snapshot {
   frame: Frame;
+  floodStartedAt?: number | null;
   settings: Settings;
   emotion: string;
   sent: number;

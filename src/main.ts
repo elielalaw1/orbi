@@ -1,3 +1,4 @@
+import { floodFrame, FLOOD_DURATION } from "./character/FloodScene";
 import "./style.css";
 import { installVoice } from "./gesture/VoiceInput";
 import { palmCenter } from "./gesture/GestureNavigator";
@@ -64,7 +65,7 @@ function boot() {
 <section class="emotion-panel panel"><div class="panel-head"><h2>Set the mood <span class="muted normal">A feeling fills the whole dome.</span></h2><span class="tiny-status">KEYS 1–6</span></div><div class="emotion-buttons">${emotions.map((e, i) => `<button class="emotion-button ${e === "neutral" ? "selected" : ""}" data-emotion="${e}" aria-pressed="${e === "neutral"}"><span class="emotion-face ${e}">${icons[e]}</span><strong>${e[0].toUpperCase() + e.slice(1)}</strong><span class="gesture-name">${["No gesture", "Thumbs up", "Thumbs down", "Middle finger", "Open palm", "Peace sign"][i]}</span><kbd>${i + 1}</kbd></button>`).join("")}</div></section>
 <section class="direction-panel panel"><div class="panel-head"><h2>Follow your lead</h2><span class="tiny-status">ARROW KEYS</span></div><div class="direction-content"><div class="dpad"><button data-dir="up" aria-label="Look up">↑</button><button data-dir="left" aria-label="Look left">←</button><button id="center" aria-label="Return to center">⊙</button><button data-dir="right" aria-label="Look right">→</button><button data-dir="down" aria-label="Look down">↓</button></div><p>Eyes first.<br>Curiosity follows.<small>Space to return home</small></p></div></section></div>
 <section class="lower-grid" id="calibration"><div class="panel controls"><div class="panel-head"><h2>Fine-tune the feeling</h2><button id="reset" class="text-button">↺ Reset character <kbd>R</kbd></button></div><div class="control-grid">${range("Dome brightness", "brightness", 0.15, 1, 0.01)}${range("Animation speed", "speed", 0.5, 1.5, 0.05)}<label class="select-label">Render resolution<select id="resolution"><option value="768">768 × 768 · preview</option><option value="1024" selected>1024 × 1024 · development</option><option value="2048">2048 × 2048 · production</option><option value="2160">2160 × 2160 · HDMI</option></select></label><label class="toggle-label"><span>Procedural sound<small>Optional stereo reactions</small></span><input id="audio" type="checkbox" role="switch"></label></div><details><summary>Face & animation calibration <span>＋</span></summary><div class="control-grid">${range("Home azimuth", "homeAz", -10, 10, 1, "°")}${range("Home elevation", "homeEl", 15, 25, 1, "°")}${range("Eye spacing", "eyeSpacing", 8, 18, 0.5, "°")}${range("Face scale", "faceScale", 0.6, 1.8, 0.02)}${range("Mouth scale", "mouthScale", 0.6, 1.3, 0.05)}${range("Eyebrow offset", "browOffset", -2, 2, 0.25, "°")}${range("Expression transition", "expressionMs", 250, 600, 10, " ms")}${range("Color transition", "colorMs", 600, 1200, 20, " ms")}${range("Return transition", "returnMs", 1000, 1800, 50, " ms")}${range("Directional hold", "holdMs", 500, 3000, 100, " ms")}${range("Anticipation", "anticipationMs", 100, 400, 10, " ms")}${range("Idle timeout", "idleMs", 3000, 15000, 500, " ms")}${range("Master volume", "volume", 0, 0.5, 0.01)}</div></details><details><summary>Gesture & pointing calibration <span>＋</span></summary><p class="calibration-note">Directional control is relative to the camera, not precise 3D pointing. Use a single index finger. In position mode, center your hand and press Calibrate center, then move outside the dead zone.</p><div class="control-grid"><label class="select-label">Pointing method<select id="pointing-method"><option value="orientation">Finger orientation</option><option value="position">Hand position</option></select></label><label class="toggle-label"><span>Mirror camera & directions</span><input id="mirror" type="checkbox" checked></label>${range("Confidence threshold", "confidence", 0.5, 0.95, 0.01)}${range("Stable gesture duration", "stableMs", 300, 500, 10, " ms")}${range("Reaction cooldown", "cooldownMs", 500, 2000, 100, " ms")}${range("Inference rate", "inferenceFps", 10, 30, 1, " FPS")}${range("Position dead zone", "deadZone", 0.08, 0.35, 0.01)}${range("Orientation threshold", "directionThreshold", 0.5, 0.9, 0.05)}<button class="secondary" id="calibrate">Calibrate hand center</button></div></details></div>
-<div class="panel delivery" id="delivery"><div class="panel-head"><h2>Ready for the big room?</h2><span>↗</span></div><p>A clean output. A world of expression.<br>Keep your controls right here.</p><div class="output-spec"><strong>3840 × 2160</strong><span>HDMI FRAME · CENTERED 2160² MASTER</span></div><div class="delivery-actions"><button class="secondary" id="square-output">Open square master ↗</button><button class="secondary" id="record">● Record demo</button></div><span class="delivery-note">Output window: press F for fullscreen.<br>Recording follows a 33-second scripted sequence.</span></div></section><footer><span><b class="footer-logo">ORBI</b> THE DOME IS THE CHARACTER.</span><span>BUILT FOR WISDOME MALMÖ <span class="footer-star">✳</span></span></footer></main><div id="toast" role="status" aria-live="polite"></div>`;
+<div class="panel delivery" id="delivery"><div class="panel-head"><h2>Ready for the big room?</h2><span>↗</span></div><p>A clean output. A world of expression.<br>Keep your controls right here.</p><div class="output-spec"><strong>3840 × 2160</strong><span>HDMI FRAME · CENTERED 2160² MASTER</span></div><div class="delivery-actions"><button class="secondary" id="flood">Start The Death of Orbi <kbd>W</kbd></button><button class="secondary" id="square-output">Open square master ↗</button><button class="secondary" id="record">● Record demo</button></div><span class="delivery-note">Output window: press F for fullscreen.<br>Recording follows a 33-second scripted sequence.</span></div></section><footer><span><b class="footer-logo">ORBI</b> THE DOME IS THE CHARACTER.</span><span>BUILT FOR WISDOME MALMÖ <span class="footer-star">✳</span></span></footer></main><div id="toast" role="status" aria-live="polite"></div>`;
   const canvas = $<HTMLCanvasElement>("dome");
   let dashboardOpen = false;
   let sweepTimers: number[] = [];
@@ -288,9 +289,23 @@ function boot() {
     store.time += (now - previous) * store.settings.speed;
     previous = now;
   }
+  const rehearsalTime = Number(params.get("floodAt"));
+  let floodStartedAt: number | null =
+    !output && params.has("floodAt") && Number.isFinite(rehearsalTime)
+      ? Date.now() - Math.max(0, Math.min(FLOOD_DURATION, rehearsalTime)) * 1000
+      : null;
+  function floodTime() {
+    return floodStartedAt === null ? -1 : Math.max(0, (Date.now() - floodStartedAt) / 1000);
+  }
+  function toggleFlood() {
+    floodStartedAt = floodStartedAt === null ? Date.now() : null;
+    $("flood").textContent = floodStartedAt === null ? "Start The Death of Orbi (W)" : "End flood scene (W)";
+    publish();
+  }
   function publish() {
     const frame = store.animator.sample(store.time, store.settings);
     sync.send({
+      floodStartedAt,
       frame,
       settings: store.settings,
       emotion: store.animator.emotion.emotion,
@@ -590,6 +605,7 @@ function boot() {
         }),
       );
     });
+    $("flood").onclick = toggleFlood;
     $("open-output").onclick = () => launch("hdmi");
     $("square-output").onclick = () => launch("square");
     $("camera-toggle").onclick = toggleCamera;
@@ -721,6 +737,11 @@ function boot() {
       }
       return;
     }
+    if (e.key.toLowerCase() === "w") {
+      e.preventDefault();
+      if (!e.repeat) toggleFlood();
+      return;
+    }
     if (e.key.toLowerCase() === "d") {
       e.preventDefault();
       setDashboard(!dashboardOpen);
@@ -783,6 +804,7 @@ function boot() {
     publish();
   };
   sync.onFrame = (snapshot) => {
+    floodStartedAt = snapshot.floodStartedAt ?? null;
     previous = performance.now();
     store.animator.restore(snapshot.animation);
     store.settings = { ...snapshot.settings };
@@ -797,26 +819,18 @@ function boot() {
   function animate(now: number) {
     advance(now);
     frames++;
-    if (output) {
-      const snapshot = sync.latest;
-      if (snapshot)
-        renderer.render(
-          store.animator.sample(store.time, store.settings),
-          store.settings,
-          square ? store.settings.resolution : 2160,
-        );
-      else
-        renderer.render(
-          store.animator.sample(store.time, store.settings),
-          store.settings,
-          square ? 1024 : 2160,
-        );
-    } else {
-      infer(now);
-      const frame = store.animator.sample(store.time, store.settings);
-      renderer.render(frame, store.settings);
+    if (!output) infer(now);
+    const elapsed = floodTime();
+    const normalFrame = store.animator.sample(store.time, store.settings);
+    const frame = elapsed < 0 ? normalFrame : floodFrame(normalFrame, elapsed);
+    const resolution = output
+      ? (square ? (sync.latest ? store.settings.resolution : 1024) : 2160)
+      : store.settings.resolution;
+    renderer.render(frame, store.settings, resolution, elapsed);
+    if (!output) {
       if (now - lastSync > 33) {
         sync.send({
+          floodStartedAt,
           frame,
           settings: store.settings,
           emotion: store.animator.emotion.emotion,
@@ -830,6 +844,10 @@ function boot() {
         $("inference-cost").textContent = cameraRunning
           ? `${Math.round(inferenceCostMs)} ms`
           : "—";
+        if (elapsed >= 0) {
+          const seconds = Math.floor(Math.min(elapsed, FLOOD_DURATION));
+          $("flood").textContent = `End flood scene · ${seconds}s (W)`;
+        }
         const emotion = store.animator.emotion.emotion;
         $("emotion-label").textContent =
           emotion[0].toUpperCase() + emotion.slice(1);
