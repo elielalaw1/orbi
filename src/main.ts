@@ -265,8 +265,14 @@ ${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="
     pauseSimulator(!show || !previewDock.classList.contains("simulator-view"));
   }
   async function fullscreenProjection() {
-    setDashboard(false);
     try {
+      if (dashboardOpen && previewDock.classList.contains("simulator-view")) {
+        const simulator = $<HTMLIFrameElement>("simulator").contentDocument;
+        if (simulator?.fullscreenElement) await simulator.exitFullscreen();
+        else await simulator?.documentElement.requestFullscreen();
+        return;
+      }
+      setDashboard(false);
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
     } catch {

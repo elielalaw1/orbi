@@ -771,8 +771,8 @@ addEventListener('keydown', e => {
   else if (k === 'v' || k === 'V') { const o = ['inset','dome','fisheye']; S.view = o[(o.indexOf(S.view)+1)%3]; syncUI(); save(); }
   else if (k === 'l' || k === 'L') lookSweet();
   else if (k === 'p' || k === 'P') wantShot = true;
-  else if (k === 'Enter') fullscreen();
-  else if (k === ' ') { e.preventDefault(); togglePlay(); }
+  else if (k === 'Enter' && tag !== 'BUTTON') fullscreen();
+  else if (k === ' ' && tag !== 'BUTTON') { e.preventDefault(); togglePlay(); }
   else if (k === '+' || k === '=') zoom(-5);
   else if (k === '-') zoom(5);
   else if (k >= '1' && k <= '5') setSeat(SEAT_KEYS[+k - 1]);
