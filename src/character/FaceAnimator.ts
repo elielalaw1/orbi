@@ -14,7 +14,7 @@ export class FaceAnimator {
     this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
   }
   cancelRoutine(){this.routine=null;}
-  private get duration(){return this.routine?.kind === "boxing" ? 15400 : 8000;}
+  private get duration(){return this.routine?.kind === "boxing" ? 20000 : 8000;}
   routineActive(now:number){return !!this.routine&&now-this.routine.start<this.duration;}
   private nextBlink = 1200;
   private blinkStart = -1e9;

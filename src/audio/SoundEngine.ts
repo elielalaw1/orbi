@@ -35,6 +35,35 @@ export class SoundEngine {
     this.lastMatchTime = time;
   }
 
+  private makeCrowd(context: AudioContext) {
+    // Stagger vowel-shaped whoops across the stereo field over a bed of handclaps.
+    const rate = 22050;
+    const buffer = context.createBuffer(2, rate * 4, rate);
+    for (let channel = 0; channel < 2; channel++) {
+      const data = buffer.getChannelData(channel);
+      for (let fan = 0; fan < 25; fan++) {
+        const start = Math.floor(Math.random() * data.length);
+        const duration = .38 + Math.random() * .65;
+        const pitch = 190 + Math.random() * 210;
+        let phase = 0;
+        for (let i = 0; i < duration * rate; i++) {
+          const u = i / (duration * rate);
+          const breath = Math.sin(Math.PI * u);
+          phase += 2 * Math.PI * pitch * (1 + .48 * breath) / rate;
+          data[(start + i) % data.length] += .044 * breath *
+            (Math.sin(phase) + .6 * Math.sin(phase * 3) + .28 * Math.sin(phase * 5));
+        }
+      }
+      for (let clap = 0; clap < 190; clap++) {
+        const start = Math.floor(Math.random() * data.length);
+        for (let i = 0; i < 1100; i++) {
+          data[(start + i) % data.length] += .16 * (Math.random()*2-1) * Math.exp(-i/190);
+        }
+      }
+    }
+    return buffer;
+  }
+
   private async loadClips() {
     await Promise.all(["kiss", "run", "water", "boxing"].map(async name => {
       if (this.clips.has(name)) return;
@@ -52,7 +81,7 @@ export class SoundEngine {
     source.buffer = buffer;
     source.loop = loop;
     source.playbackRate.value = rate;
-    gain.gain.value = name === "water" ? 1.1 : 1.6;
+    gain.gain.value = name === "crowd" ? 0 : name === "water" ? 1.1 : 1.6;
     source.connect(gain).connect(this.master!);
     source.onended = () => { source.disconnect(); gain.disconnect(); };
     source.start();
@@ -72,6 +101,7 @@ export class SoundEngine {
   async unlock() {
     if (!this.context) {
       this.context = new AudioContext();
+      this.clips.set("crowd", this.makeCrowd(this.context));
       this.master = this.context.createGain();
       this.master.gain.value = 0;
       this.master.connect(this.context.destination);
@@ -130,7 +160,17 @@ export class SoundEngine {
     if (this.context?.state === "running") {
       const now = this.context.currentTime;
       this.master!.gain.setTargetAtTime(settings.audio ? settings.volume : 0, now, .025);
-      this.syncMatch(settings.audio && frame.scene === 3 && floodSeconds < 0 ? frame.sceneTime : -1, settings.speed);
+      const dreaming = settings.audio && frame.scene === 3 && floodSeconds < 0;
+      const matchTime = frame.sceneTime - 3;
+      this.syncMatch(dreaming ? matchTime : -1, settings.speed);
+      this.loop("crowd", dreaming && frame.sceneTime > .8);
+      const audience = this.loops.get("crowd");
+      if (audience) {
+        const arrival = Math.min(1, Math.max(0, frame.sceneTime - 1) / 2);
+        const wake = Math.min(1, Math.max(0, 19.5-frame.sceneTime) / 1.8);
+        const level = matchTime < 6.32 ? .48 : matchTime < 7.9 ? .14 : 2.25;
+        audience.gain.gain.setTargetAtTime(level * arrival * wake, now, .12);
+      }
       this.loop("run", settings.audio && frame.run > .25 && floodSeconds < 0, 1.65);
       this.loop("water", settings.audio && floodSeconds >= 0 && floodSeconds < FLOOD_DURATION);
       if (settings.audio) {

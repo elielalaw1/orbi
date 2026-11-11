@@ -191,13 +191,49 @@ void boxer(inout vec3 c,vec2 p,float facing,float strike,float lift,float knocke
  boxingGlove(c,p-lead,leather);
  boxingGlove(c,p-rear,leather*.86);
 }
-vec3 boxingMatch(vec3 ray,float t){
- float az=atan(ray.x,ray.y+.000001);
- vec2 p=floor(vec2(az,asin(clamp(ray.z,-1.,1.))-.35)*78.);
- vec3 c=p.y < -15.?vec3(.13,.22,.35):vec3(.065,.07,.17);
- float row=floor((p.y+5.)/6.);
- if(p.y>0. && p.y<31. && length(vec2(mod(p.x+row*3.,7.)-3.,mod(p.y+5.,6.)-3.))<2.)
-   c=mix(vec3(.20,.16,.37),vec3(.29,.24,.42),.5+.5*sin(row+p.x*.25));
+// Evaluate just the seat under this pixel: 144 columns around the room, 20 tiers.
+vec3 grandstand(vec2 arena,float t,float cheer){
+ vec3 navy=vec3(.055,.055,.14);
+ float row=floor((arena.y+6.)/2.6);
+ if(row<0. || row>=20.)return navy;
+ float seat=arena.x*144./(2.*PI*78.)+.5*mod(row,2.);
+ float seed=fract(sin(dot(vec2(floor(seat),row),vec2(57.23,21.37)))*4375.8);
+ vec2 local=vec2(fract(seat)-.5,fract((arena.y+6.)/2.6)-.5);
+ float hop=abs(sin(t*(3.+seed*3.)+seed*16.+row*.2));
+ local.y-=hop*(.04+.16*cheer);
+ vec3 shirt=mix(vec3(.20,.33,.58),vec3(.98,.64,.10),step(.38,seed));
+ vec3 c=mix(navy,vec3(.19,.14,.30),step(.44,abs(local.y)));
+ if(abs(local.x)<.23 && local.y<.03 && local.y>-.38)c=shirt;
+ if(length(local-vec2(0.,.13))<.17)c=mix(vec3(.70,.39,.24),vec3(1.,.85,.56),seed);
+ float arm=abs(local.x);
+ if(arm>.17 && arm<.46 && abs(local.y-(arm-.18)*(.65+cheer*1.4)*hop+.05)<.07)c=shirt;
+ return c;
+}
+
+vec3 fireworks(vec3 c,vec2 p,float time){
+ if(time<0.)return c;
+ float lane=floor((p.x+21.)/42.);
+ float age=mod(time+fract(lane*.618)*.8,1.65);
+ vec2 delta=vec2(mod(p.x+21.,42.)-21.,p.y-36.-9.*sin(lane*5.));
+ if(age<.23){
+   if(abs(delta.x)<.65 && abs(delta.y+16.-age*70.)<2.)return vec3(1.,.82,.46);
+ }else{
+   float burst=age-.23;
+   delta.y+=8.*burst*burst;
+   float radius=length(delta);
+   float spoke=abs(sin(atan(delta.y,delta.x+.00001)*7.+lane));
+   float sparks=(1.-smoothstep(.10,.42,spoke))*(1.-smoothstep(.6,2.2,abs(radius-17.*burst)));
+   vec3 hue=mix(vec3(1.,.42,.65),vec3(.55,.96,1.),step(.0,sin(lane*4.+floor(time/1.65))));
+   c=mix(c,hue,sparks*(1.-smoothstep(.78,1.35,burst)));
+ }
+ return c;
+}
+
+vec3 boxingMatch(vec2 arena,float t){
+ vec2 p=floor(arena);
+ float cheer=smoothstep(7.8,8.15,t);
+ vec3 c=p.y < -15.?vec3(.13,.22,.35):grandstand(arena,t,cheer);
+ c=fireworks(c,floor(arena*2.)*.5,t-7.9);
  if(abs(p.x)<48. && (abs(p.y+10.)<1. || abs(p.y+3.)<1. || abs(p.y-5.)<1.))c=vec3(.67,.37,.40);
  if(abs(abs(p.x)-47.)<2. && p.y<9. && p.y> -16.)c=vec3(.85,.62,.34);
  // Contact cues measured from the supplied voice recording, in seconds.
@@ -226,7 +262,7 @@ vec3 boxingMatch(vec3 ray,float t){
  if(abs(abs(v.x-1.)-9.)<3. && abs(v.y+8.)<3.)c=vec3(.07,.08,.13);
  if(boxPixel(v-vec2(5.,8.),vec2(3.,1.)))c=mix(vec3(.3,.52,.95),vec3(1.,.25,.18),step(.5,fract(t*3.)));
  if(lift>.8){
-   vec2 crown=p-hero-vec2(0.,15.+floor(sin(t*4.)));
+   vec2 crown=p-hero-vec2(0.,10.+8.*(1.-smoothstep(7.85,8.25,t)));
    if(abs(crown.x)<6. && crown.y>=0. && crown.y<2.+abs(mod(crown.x+2.,4.)-2.))c=vec3(1.,.85,.24);
  }
  return c;
@@ -262,14 +298,28 @@ void main(){
    gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*step(.76,band)*step(.62,fract(length(pixel)*28.))*smoothstep(.15,.9,length(p)));
  }
  if(uScene.x==3. && uFloodTime<0.){
-   float t=uScene.y;
-   float fade=smoothstep(0.,.20,t)*(1.-smoothstep(14.6,15.4,t));
-   frag=vec4(mix(gold,boxingMatch(rd,t),fade)*uBrightness,1.);
-   return;
+   float time=uScene.y;
+   float zoom=smoothstep(1.05,2.95,time)*(1.-smoothstep(17.45,19.45,time));
+   float appear=smoothstep(.25,.85,time)*(1.-smoothstep(19.4,20.,time));
+   vec2 arena=vec2(atan(rd.x,rd.y+.000001),asin(clamp(rd.z,-1.,1.))-.35)*78.;
+   vec2 center=mix(vec2(32.,31.),vec2(0.),zoom);
+   vec2 offset=arena-center;
+   float radius=mix(11.,275.,zoom)*appear;
+   float edge=length(offset/vec2(1.4,1.))-
+     radius*(1.+.045*cos(atan(offset.y,offset.x+.00001)*9.));
+   if(appear>.0 && edge<1.1){
+     vec3 bubble=edge>-.95?vec3(1.,.97,.85):
+       boxingMatch(offset/mix(.29,1.,zoom),max(0.,time-3.));
+     frag=vec4(bubble*uBrightness,1.);return;
+   }
+   if(appear>.0 && (length(arena-vec2(19.,19.))<2.*appear ||
+      length(arena-vec2(24.,23.))<3.*appear)){
+     frag=vec4(vec3(1.,.97,.85)*uBrightness,1.);return;
+   }
  }
  float sceneTime=uScene.y;
  float envelope=smoothstep(0.,.6,sceneTime)*(1.-smoothstep(7.,8.,sceneTime));
- if(uScene.x>0. && envelope>0.){
+ if(uScene.x==2. && envelope>0.){
    // Quantize the dome sample, then recover its calibrated direction.
    vec3 ray=roomDir((floor(p*160.)+.5)/160.);
    vec3 stage=gestureStage(ray,uScene.x,sceneTime);
