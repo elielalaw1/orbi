@@ -19,7 +19,7 @@ vec3 roomDir(vec2 p){
  float c=cos(radians(26.0)),s=sin(radians(26.0));
  return vec3(l.x,l.y*c+l.z*s,-l.y*s+l.z*c);
 }
-float mask(float d){return 1.-smoothstep(-fwidth(d),fwidth(d),d);}
+float mask(float d){return 1.-step(0.,d);}
 float ellipse(vec2 p,vec2 r){return (length(p/r)-1.)*min(r.x,r.y);}
 float line(float d,float w){return 1.-smoothstep(w,w+.18,abs(d));}
 void main(){
@@ -32,10 +32,13 @@ void main(){
  float angle=atan(length(tangent),f);vec2 q=length(tangent)>1e-6?tangent/length(tangent)*degrees(angle):vec2(0);
  float rot=radians(uFace.w);q=mat2(cos(rot),-sin(rot),sin(rot),cos(rot))*q;
  q/=uFace.z*uMotion.w;q.x/=1.+uExtra.y;q.y*=1.+uExtra.y;
+ // Sample facial geometry on a grid that moves with the character.
+ q=(floor(q/1.15)+.5)*1.15;
  // Oversized animation-style eyes and a simple grin; the architecture is the head.
  float lightBand=smoothstep(.0,.7,dot(rd,normalize(vec3(-.3,.5,.8))));
- vec3 col=uColor*(.97+.03*lightBand);
- vec3 ink=vec3(.025,.018,.04);
+ vec3 gold=mix(vec3(1.,.76,.09),uColor,.16);
+ vec3 col=gold;
+ vec3 ink=vec3(.075,.052,.12);
  if(f>0.&&abs(q.x)<30.&&abs(q.y)<25.){
  for(int i=0;i<2;i++){
   float side=i==0?-1.:1.;vec2 ep=q-vec2(side*uDetails.z,4.4);
@@ -47,13 +50,13 @@ void main(){
   col=mix(col,uColor*.65,contact*.11);
   // Broad cool-white cartoon eyes, solid pupils; no anatomical iris or skin texture.
   vec3 white=mix(vec3(.77,.79,.96),vec3(.98,.97,1.),smoothstep(-.8,.5,ep.y/max(height,.32)));
-  col=mix(col,white,eye);
+  col=mix(col,vec3(.17,.12,.23),eye);
   vec2 gaze=vec2(clamp(uMotion.x,-1.,1.)*3.2,clamp(uMotion.y,-1.,1.)*2.5);
   vec2 pupilR=vec2(4.15,min(5.0,max(.2,height*.65)));
   float pupil=mask(ellipse(ep-gaze,pupilR))*eye;
   col=mix(col,vec3(.008,.009,.02),pupil);
-  float glint=mask(ellipse(ep-gaze-vec2(-1.0,1.4),vec2(.65,min(.8,height*.2))));
-  col=mix(col,vec3(1.,.99,1.),glint*pupil*.7);
+  float glint=mask(ellipse(ep-gaze-vec2(-1.0,1.4),vec2(1.4,min(1.4,height*.3))));
+  col=mix(col,vec3(1.,.99,1.),glint*pupil);
   if(uRoutine.x>0.){
    vec2 h=(ep-gaze)/vec2(5.5,max(.4,height*.7));h.y+=.15;
    float v=dot(h,h)-1.;
