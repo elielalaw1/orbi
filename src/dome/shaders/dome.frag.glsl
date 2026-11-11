@@ -55,6 +55,10 @@ vec3 floodWater(vec3 color, vec3 ray, float t, float depth){
  vec3 transmitted=mix(color*vec3(.82,.92,.90),pool,opacity);
  return mix(color,transmitted,submerged)+vec3(.17,.65,.84)*edge*.40;
 }
+float stroke(vec2 p, vec2 a, vec2 b, float width){
+ vec2 axis=b-a;
+ return step(length(p-a-axis*clamp(dot(p-a,axis)/max(.001,dot(axis,axis)),0.,1.)),width);
+}
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -67,21 +71,25 @@ void main(){
  gold=mix(gold,vec3(.96,.09,.035),heat);
  if(heat>.001){
    float az=atan(rd.x,rd.y);
-   float elevation=asin(clamp(rd.z,-1.,1.));
+   float elevation=floor(asin(clamp(rd.z,-1.,1.))*65.)/65.;
    float t=uRoutine.w;
    float cell=floor(az*90.)/90.;
    float height=.24*sin(7.*cell+1.6*t)+.16*sin(13.*cell-2.1*t)+.09*sin(29.*cell+t*3.);
-   float edge=heat*2.2-1.12+height*heat;
+   float tongue=pow(max(0.,sin(cell*21.+.8*sin(elevation*6.-t*4.))),3.);
+   float edge=heat*(1.80+.60*tongue)-1.12+height*heat;
    float flame=1.-smoothstep(edge-.07,edge,elevation);
    float core=1.-smoothstep(edge-.50,edge-.32,elevation);
-   gold=mix(gold,mix(vec3(1.,.27,.015),vec3(1.,.65,.08),core),flame*heat*.88);
+   gold=mix(gold,mix(vec3(1.,.22,.012),vec3(1.,.71,.06),step(.5,core)),step(.5,flame)*heat);
+   vec2 spark=fract(vec2(cell*7.,elevation*1.7-t*.72+sin(floor(cell*7.)*9.)));
+   if(elevation>edge && spark.x<.13 && spark.y<.08)gold=mix(gold,vec3(1.,.84,.21),heat);
  }
  if(uRoutine.z>.001){
-   float arc=atan(p.y,p.x);
-   float band=fract(arc*3.1831-uRoutine.w*.85+floor(length(p)*14.)*.21);
-   gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*smoothstep(.68,.96,band)*smoothstep(.15,.9,length(p)));
+   vec2 pixel=floor(p*115.)/115.;
+   float arc=atan(pixel.y,pixel.x);
+   float band=fract(arc*3.1831-uRoutine.w*.85+floor(length(pixel)*28.)*.21);
+   gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*step(.76,band)*step(.62,fract(length(pixel)*28.))*smoothstep(.15,.9,length(p)));
  }
- float faceRadius=40.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
+ float faceRadius=46.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
  if(uFloodTime<0. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
    frag=vec4(clamp(gold*uBrightness,0.,1.),1.);
    return;
@@ -154,6 +162,37 @@ void main(){
  col=mix(col,vec3(1.,.28,.19),cheek*.08*max(smile,0.));
  }
 
+ if(f>0. && uRoutine.z>.01){
+   // Opposing thigh and shin angles keep both feet legible at a sprint.
+   for(int leg=0;leg<2;leg++){
+     float side=leg==0?-1.:1.;
+     float cycle=floor(uRoutine.w*32.)*.9+float(leg)*PI;
+     vec2 hip=vec2(side*4.,-16.);
+     vec2 knee=hip+vec2(7.*sin(cycle),-7.+3.*cos(cycle));
+     vec2 foot=knee+vec2(8.*sin(cycle-.95),-5.+3.*cos(cycle-.95));
+     float limb=max(stroke(q,hip,knee,1.8),stroke(q,knee,foot,1.6));
+     col=mix(col,ink,limb*uRoutine.z);
+     vec2 shoe=q-foot-vec2(1.8,0.);
+     if(abs(shoe.y)<2.1 && abs(shoe.x)<4.5)col=mix(col,shoe.y<-.7?vec3(1.,.92,.68):vec3(.82,.09,.05),uRoutine.z);
+     vec2 exhaust=q-foot+vec2(7.,0.);
+     float plume=1.-abs(exhaust.x)/6.-abs(exhaust.y+.8*sin(exhaust.x+cycle))/2.;
+     if(exhaust.x<3. && plume>0.)col=mix(col,plume>.4?vec3(1.,.83,.10):vec3(1.,.28,.02),uRoutine.z);
+   }
+ }
+ if(f>0. && uRoutine.y>0.){
+   float kiss=uRoutine.y;
+   vec2 lips=(q-vec2(0.,-9.))/vec2(mix(14.,8.,kiss),mix(3.,6.,kiss));
+   lips.y-=.18*cos(lips.x*5.);
+   if(dot(lips,lips)<1.)col=abs(lips.y)<.16?ink:(lips.y>.0?vec3(.91,.09,.22):vec3(1.,.29,.39));
+   vec2 hand=vec2(22.,-14.+2.*kiss);
+   vec2 bud=hand+vec2(4.,15.);
+   if(stroke(q,hand,bud,1.)>.5||stroke(q,hand+vec2(2.,6.),hand+vec2(-2.,9.),1.4)>.5)col=vec3(.13,.42,.19);
+   vec2 petal=q-bud;
+   if(abs(petal.x)+abs(petal.y)*.8<5.)col=petal.y>1.?vec3(1.,.27,.36):vec3(.72,.02,.13);
+   if(stroke(q,bud-vec2(2.,0.),bud+vec2(.4,-1.),.65)>.5)col=vec3(.40,.015,.07);
+   if(stroke(q,hand-vec2(5.,3.),hand,2.4)>.5)col=ink;
+   if(length(q-hand)<3.5)col=vec3(1.,.89,.57);
+ }
  if(uFloodTime>=0.){
   col=mix(col,dryBackground,smoothstep(104.,113.,uFloodTime));
   col=floodWater(col,rd,uFloodTime,waterDepth);

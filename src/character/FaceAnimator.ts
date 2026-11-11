@@ -5,8 +5,11 @@ import { SpatialAnimator } from "./SpatialAnimator";
 export class FaceAnimator {
   emotion = new EmotionStateMachine();
   spatial = new SpatialAnimator();
-  private routine: {kind:'lap'|'flirt';start:number}|null=null;
-  startRoutine(kind:'lap'|'flirt',now:number){this.routine={kind,start:now};}
+  private routine: {kind:'lap'|'flirt';start:number;target?:[number,number]}|null=null;
+  startRoutine(kind:'lap'|'flirt',now:number){
+    const side = Math.random() < .5 ? -1 : 1;
+    this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
+  }
   cancelRoutine(){this.routine=null;}
   routineActive(now:number){return !!this.routine&&now-this.routine.start<8000;}
   private nextBlink = 2600;
@@ -48,7 +51,7 @@ export class FaceAnimator {
         this.spatial.moveTo(Math.sin(phase)*radius,-Math.cos(phase)*radius,now,s);
         bounce=(stride-.45)*.095*run;
       }else{
-        this.spatial.moveTo(...roomToMaster(65,20),now,s);
+        this.spatial.moveTo(...(this.routine.target ?? roomToMaster(50,20)),now,s);
         if(t>900){hearts=1;kiss=.7+.3*Math.sin(t*.008);wink=Math.pow(Math.max(0,Math.sin(t*.005)),8);}
       }
     }
