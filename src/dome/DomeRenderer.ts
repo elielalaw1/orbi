@@ -51,6 +51,8 @@ export class DomeRenderer {
       "uScene",
       "uRoutine",
       "uEscape",
+      "uEchoPose[0]",
+      "uEchoExpression[0]",
       "uFloodTime",
       "uRes",
       "uColor",
@@ -84,6 +86,14 @@ export class DomeRenderer {
     gl.uniform1f(u("uFloodTime"), floodTime);
     gl.uniform1f(u("uFire"), f.fire ?? 0);
     gl.uniform2f(u("uScene"),f.scene,f.sceneTime);
+    if (f.echo) {
+      gl.uniform4fv(u("uEchoPose[0]"), f.echo.flatMap(
+        ({ azimuth, elevation, size, opacity }) => [azimuth, elevation, size, opacity],
+      ));
+      gl.uniform4fv(u("uEchoExpression[0]"), f.echo.flatMap(
+        ({ look, smile, tilt, blink }) => [look, smile, tilt, blink],
+      ));
+    }
     gl.uniform2f(u("uEscape"), f.escape?.visibility ?? 1, f.escape?.peek ?? 0);
     gl.uniform4f(u("uRoutine"),f.hearts,f.kiss,f.run,f.seconds);
     gl.uniform2f(u("uRes"), resolution, resolution);

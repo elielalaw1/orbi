@@ -46,6 +46,7 @@ function boot() {
     ["Zero gravity", "Hold up two closed fists", "gravity"],
     ["Flirt", "Make a heart with both hands", "flirt"],
     ["Run", "Start voice and say “run”", "lap"],
+    ["Orbi Hears an Echo", "Optional live gestures during the first eight seconds", "echo"],
     ["Two Orbis, One Rose", "Play the 24-second courtship scene", "rose"],
     ["The Great Escape", "Play the 14-second sprint and peek routine", "escape"],
     ["Angry fire", "Raise one middle finger", "angry"],

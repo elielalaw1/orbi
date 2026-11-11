@@ -3,19 +3,34 @@ import { roomToMaster } from "../dome/ProjectionMath";
 import type { GestureScene, Routine, Settings } from "../app/types";
 import { EmotionStateMachine, ease } from "./EmotionStateMachine";
 import { SpatialAnimator } from "./SpatialAnimator";
+import { ECHO_DURATION_MS, ECHO_INPUT_MS, echoFaces, type EchoCue, type EchoFace } from "./EchoScene";
 import { escapeFrame, ESCAPE_DURATION_MS } from "./EscapeScene";
 const sceneIds: Record<GestureScene, number> = { gravity: 2, boxing: 3 };
 
 export class FaceAnimator {
   emotion = new EmotionStateMachine();
   spatial = new SpatialAnimator();
-  private routine: {kind:Routine;start:number;target?:[number,number]}|null=null;
+  private routine: {kind:Routine;start:number;target?:[number,number];echoCues?:EchoCue[]}|null=null;
   startRoutine(kind:Routine,now:number){
     const side = Math.random() < .5 ? -1 : 1;
     this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
   }
+  cueEcho(now: number, cue: Omit<EchoCue, "seconds">) {
+    if (this.routine?.kind !== "echo") return;
+    const elapsed = now - this.routine.start;
+    if (elapsed < 0 || elapsed >= ECHO_INPUT_MS) return;
+    const cues = this.routine.echoCues ?? [];
+    const previous = cues.at(-1);
+    if (previous && ((cue.look !== undefined && previous.look === cue.look)
+      || (cue.smile !== undefined && previous.smile === cue.smile))) return;
+    this.routine = {
+      ...this.routine,
+      echoCues: [...cues.slice(-47), { ...cue, seconds: elapsed / 1000 }],
+    };
+  }
   cancelRoutine(){this.routine=null;}
   private get duration() {
+    if (this.routine?.kind === "echo") return ECHO_DURATION_MS;
     if (this.routine?.kind === "rose") return 24000;
     if (this.routine?.kind === "escape") return ESCAPE_DURATION_MS;
     return this.routine?.kind === "boxing" ? 20000 : 8000;
@@ -74,7 +89,8 @@ export class FaceAnimator {
           bounce=.025*Math.sin(t*.004);
         }
       }else{
-        if (this.routine.kind === "rose") scene = 4;
+        if (this.routine.kind === "echo") scene = 5;
+        else if (this.routine.kind === "rose") scene = 4;
         else if (this.routine.kind !== "escape") scene = sceneIds[this.routine.kind];
         sceneTime=t/1000;
       }
@@ -136,6 +152,7 @@ export class FaceAnimator {
       shake:
         this.emotion.emotion === "angry" ? Math.sin(now * 0.022) * 0.12 : 0,
     };
+    if (this.routine?.kind === "echo") frame.echo = echoFaces(sceneTime, this.routine.echoCues);
     return this.routine?.kind === "escape"
       ? escapeFrame(frame, now - this.routine.start, s)
       : frame;
@@ -159,5 +176,6 @@ export interface Frame {
   gazeY: number;
   breath: number;
   shake: number;
+  echo?: EchoFace[];
   escape?: { visibility: number; peek: number };
 }

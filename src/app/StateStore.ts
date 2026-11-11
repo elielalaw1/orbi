@@ -15,6 +15,17 @@ export class StateStore {
       return;
     }
     if(action.type==='reset'||action.type==='center')this.animator.cancelRoutine();
+    if (action.type === "direction") {
+      const look = { left: -1, right: 1, up: .48, down: -.48 };
+      this.animator.cueEcho(this.time, { look: look[action.value] });
+    }
+    if (action.type === "target") {
+      this.animator.cueEcho(this.time, { look: Math.max(-1, Math.min(1, action.value.x * 2.5)) });
+    }
+    if (action.type === "emotion") {
+      const smile = { neutral: .45, happy: 1, sad: -.85, angry: -.65, surprised: -.2, playful: .82 };
+      this.animator.cueEcho(this.time, { smile: smile[action.value] });
+    }
     if(this.animator.routineActive(this.time)&&['target','hand-lost','emotion','direction'].includes(action.type))return;
     if (action.type === "settings") Object.assign(s, action.value);
     if (action.type === "emotion")

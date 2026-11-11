@@ -88,7 +88,7 @@ export const defaults: Settings = {
   directionThreshold: 0.55,
 };
 export type GestureScene = 'gravity' | 'boxing';
-export type Routine = "lap" | "flirt" | "escape" | "rose" | GestureScene;
+export type Routine = "lap" | "flirt" | "escape" | "rose" | "echo" | GestureScene;
 export type Action =
   | { type: "routine"; value: Routine }
   | { type: "emotion"; value: Emotion }
