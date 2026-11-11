@@ -46,6 +46,7 @@ function boot() {
     ["Zero gravity", "Hold up two closed fists", "gravity"],
     ["Flirt", "Make a heart with both hands", "flirt"],
     ["Run", "Start voice and say “run”", "lap"],
+    ["The Great Escape", "Play the 14-second sprint and peek routine", "escape"],
     ["Angry fire", "Raise one middle finger", "angry"],
     ["The Death of Orbi", "Press W to start or stop the flood", "flood"],
   ] as const;

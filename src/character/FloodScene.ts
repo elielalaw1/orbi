@@ -47,6 +47,7 @@ export function floodFrame(frame: Frame, seconds: number): Frame {
   };
   return {
     ...frame,
+    escape: undefined,
     position: { ...frame.position, az, el, masterX, masterY, roll: 0, lean: panic * 0.08 * Math.sin(seconds * 1.8) },
     expression: {
       ...expression,

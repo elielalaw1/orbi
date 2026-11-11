@@ -6,7 +6,14 @@ export class StateStore {
   time = 0;
   dispatch(action: Action) {
     const s = this.settings;
-    if(action.type==='routine'){this.animator.startRoutine(action.value,this.time);return;}
+    if (action.type === "routine") {
+      if (action.value === "escape") {
+        this.animator.spatial.center(this.time, s);
+        this.animator.emotion.trigger("neutral", this.time, s);
+      }
+      this.animator.startRoutine(action.value, this.time);
+      return;
+    }
     if(action.type==='reset'||action.type==='center')this.animator.cancelRoutine();
     if(this.animator.routineActive(this.time)&&['target','hand-lost','emotion','direction'].includes(action.type))return;
     if (action.type === "settings") Object.assign(s, action.value);

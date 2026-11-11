@@ -50,6 +50,7 @@ export class DomeRenderer {
       "uFire",
       "uScene",
       "uRoutine",
+      "uEscape",
       "uFloodTime",
       "uRes",
       "uColor",
@@ -83,6 +84,7 @@ export class DomeRenderer {
     gl.uniform1f(u("uFloodTime"), floodTime);
     gl.uniform1f(u("uFire"), f.fire ?? 0);
     gl.uniform2f(u("uScene"),f.scene,f.sceneTime);
+    gl.uniform2f(u("uEscape"), f.escape?.visibility ?? 1, f.escape?.peek ?? 0);
     gl.uniform4f(u("uRoutine"),f.hearts,f.kiss,f.run,f.seconds);
     gl.uniform2f(u("uRes"), resolution, resolution);
     gl.uniform3fv(u("uColor"), f.expression.color);
@@ -106,11 +108,15 @@ export class DomeRenderer {
           (45 - f.position.el) / 17,
           (f.position.el + 16) / 17,
         );
+    // Keep the face large enough to be clipped by the rim during the escape.
+    const normalScale = s.fullDome ? safeScale : Math.max(0.5, safeScale);
+    const edgeBlend = Math.max(0, Math.min(1, (Math.hypot(f.position.masterX, f.position.masterY) - .65) / .22));
+    const escapeScale = normalScale * (1 - edgeBlend) + Math.min(s.faceScale, 1) * edgeBlend;
     gl.uniform4f(
       u("uFace"),
       f.position.az + f.shake,
       f.position.el,
-      s.fullDome ? safeScale : Math.max(0.5, safeScale),
+      f.escape ? escapeScale : normalScale,
       s.rotation + f.position.roll,
     );
     gl.uniform4f(

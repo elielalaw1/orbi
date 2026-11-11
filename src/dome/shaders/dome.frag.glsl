@@ -3,6 +3,7 @@ precision highp float;
 out vec4 frag;
 uniform vec2 uRes;
 uniform vec4 uRoutine;
+uniform vec2 uEscape; // character visibility, eyes-only peek
 uniform vec2 uScene;
 uniform float uFire;
 uniform vec3 uColor;
@@ -395,6 +396,7 @@ void main(){
     col=mix(col,ink,crossed*death);
   }
  }
+ vec3 eyesAndBrows=col;
  vec2 m=(q-vec2(0,-8.5))/vec2(uDetails.w,1.);
  float opening=uExpression.z,smile=uExpression.y;
  if(uRoutine.y>0.){m.x*=3.;opening=.3;smile=0.;}
@@ -409,6 +411,7 @@ void main(){
  col=mix(col,vec3(1.,.27,.36),tongue);
  float cheek=exp(-squared((abs(q.x)-23.)/3.3)-squared((q.y+4.)/2.4));
  col=mix(col,vec3(1.,.28,.19),cheek*.08*max(smile,0.));
+ col=mix(col,eyesAndBrows,uEscape.y);
  }
 
  if(f>0. && uRoutine.z>.01){
@@ -468,6 +471,7 @@ void main(){
    if(stroke(q,hand-vec2(5.,3.),hand,2.4)>.5)col=ink;
    if(length(q-hand)<3.5)col=vec3(1.,.89,.57);
  }
+ col=mix(dryBackground,col,uEscape.x);
  if(uFloodTime>=0.){
   col=mix(col,dryBackground,smoothstep(104.,113.,uFloodTime));
   col=floodWater(col,rd,uFloodTime,waterDepth);

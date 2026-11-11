@@ -1,8 +1,9 @@
+import type { Expression } from "./EmotionPresets";
 import { roomToMaster } from "../dome/ProjectionMath";
-import type { GestureScene, Settings } from "../app/types";
+import type { GestureScene, Routine, Settings } from "../app/types";
 import { EmotionStateMachine, ease } from "./EmotionStateMachine";
 import { SpatialAnimator } from "./SpatialAnimator";
-type Routine = "lap" | "flirt" | GestureScene;
+import { escapeFrame, ESCAPE_DURATION_MS } from "./EscapeScene";
 const sceneIds: Record<GestureScene, number> = { gravity: 2, boxing: 3 };
 
 export class FaceAnimator {
@@ -14,7 +15,10 @@ export class FaceAnimator {
     this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
   }
   cancelRoutine(){this.routine=null;}
-  private get duration(){return this.routine?.kind === "boxing" ? 20000 : 8000;}
+  private get duration() {
+    if (this.routine?.kind === "escape") return ESCAPE_DURATION_MS;
+    return this.routine?.kind === "boxing" ? 20000 : 8000;
+  }
   routineActive(now:number){return !!this.routine&&now-this.routine.start<this.duration;}
   private nextBlink = 1200;
   private blinkStart = -1e9;
@@ -41,7 +45,7 @@ export class FaceAnimator {
     this.blinkStart = state.blinkStart;
     this.random = state.random;
   }
-  sample(now: number, s: Settings) {
+  sample(now: number, s: Settings): Frame {
     let scene=0, sceneTime=0;
     let run=0;
     let hearts=0,kiss=0,wink=0,bounce=0;
@@ -69,7 +73,7 @@ export class FaceAnimator {
           bounce=.025*Math.sin(t*.004);
         }
       }else{
-        scene=sceneIds[this.routine.kind] ?? 0;
+        scene=this.routine.kind === "escape" ? 0 : sceneIds[this.routine.kind] ?? 0;
         sceneTime=t/1000;
       }
     }
@@ -115,7 +119,7 @@ export class FaceAnimator {
     expression.brow+=.10*Math.sin(now*.0013)+.05*Math.sin(now*.0021);
     expression.wink*=Math.pow(Math.max(0,Math.sin(now*.0018)),10);
     expression.wink=Math.max(expression.wink,wink);
-    return {
+    const frame: Frame = {
       fire: this.emotion.emotion === "angry"
         ? ease((now-this.emotion.snapshot().changed)/300) *
           (1-ease((now-this.emotion.snapshot().changed-1800)/900))
@@ -130,6 +134,28 @@ export class FaceAnimator {
       shake:
         this.emotion.emotion === "angry" ? Math.sin(now * 0.022) * 0.12 : 0,
     };
+    return this.routine?.kind === "escape"
+      ? escapeFrame(frame, now - this.routine.start, s)
+      : frame;
   }
 }
-export type Frame = ReturnType<FaceAnimator["sample"]>;
+
+
+export interface Frame {
+  scene: number;
+  sceneTime: number;
+  fire: number;
+  routineTime: number;
+  hearts: number;
+  kiss: number;
+  run: number;
+  seconds: number;
+  expression: Expression;
+  position: ReturnType<SpatialAnimator["sample"]>;
+  blink: number;
+  gazeX: number;
+  gazeY: number;
+  breath: number;
+  shake: number;
+  escape?: { visibility: number; peek: number };
+}
