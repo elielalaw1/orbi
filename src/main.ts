@@ -42,6 +42,7 @@ function boot() {
     playful: "⌁",
   };
   const animations = [
+    ["Boxing match", "Hold up both thumbs", "boxing"],
     ["Zero gravity", "Hold up two closed fists", "gravity"],
     ["Flirt", "Make a heart with both hands", "flirt"],
     ["Run", "Start voice and say “run”", "lap"],
@@ -94,7 +95,7 @@ ${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="
     pip.id = "hand-preview";
     pip.hidden = true;
     pip.innerHTML =
-      '<div class="pip-header"><strong>Your camera</strong><button id="pip-hide" aria-label="Hide camera preview">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Point to choose a destination</div><div class="pip-legend">Point ← →: sides · both index fingers ↑: up<br>Point ↓: front · Peace: back · Fist: home<br>Touch index tips and thumb tips to form a heart: flirt<br>Hold matching hands: fists = zero gravity</div>';
+      '<div class="pip-header"><strong>Your camera</strong><button id="pip-hide" aria-label="Hide camera preview">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Point to choose a destination</div><div class="pip-legend">Point ← →: sides · both index fingers ↑: up<br>Point ↓: front · Peace: back · Fist: home<br>Touch index tips and thumb tips to form a heart: flirt<br>Hold matching hands: fists = zero gravity · thumbs up = boxing</div>';
     document.body.append(pip);
     $("pip-hide").onclick = () => {
       previewWanted = false;

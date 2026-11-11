@@ -12,6 +12,7 @@ export interface HandDetection {
 }
 const pairScenes = new Map<string, GestureScene>([
   ["Closed_Fist", "gravity"],
+  ["Thumb_Up", "boxing"],
 ]);
 
 export class HandInputController {

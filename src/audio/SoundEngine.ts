@@ -14,8 +14,29 @@ export class SoundEngine {
   private loading: Promise<void> | null = null;
   private loops = new Map<string, {source: AudioBufferSourceNode; gain: GainNode}>();
 
+  private matchTrack?: AudioBufferSourceNode;
+  private lastMatchTime = -1;
+
+  private syncMatch(time: number, speed: number) {
+    const clip = this.clips.get("boxing");
+    if (this.matchTrack && (time < 0 || time < this.lastMatchTime || time >= (clip?.duration ?? 0))) {
+      this.matchTrack.stop();
+      this.matchTrack.disconnect();
+      this.matchTrack = undefined;
+    }
+    if (clip && time >= 0 && time < clip.duration && !this.matchTrack) {
+      this.matchTrack = this.context!.createBufferSource();
+      this.matchTrack.buffer = clip;
+      this.matchTrack.connect(this.master!);
+      this.matchTrack.playbackRate.value = speed;
+      this.matchTrack.start(0, time);
+    }
+    if (this.matchTrack) this.matchTrack.playbackRate.value = speed;
+    this.lastMatchTime = time;
+  }
+
   private async loadClips() {
-    await Promise.all(["kiss", "run", "water"].map(async name => {
+    await Promise.all(["kiss", "run", "water", "boxing"].map(async name => {
       if (this.clips.has(name)) return;
       const response = await fetch(`${import.meta.env.BASE_URL}audio/${name}.mp3`);
       if (!response.ok) throw new Error(`Could not load ${name} audio`);
@@ -109,10 +130,11 @@ export class SoundEngine {
     if (this.context?.state === "running") {
       const now = this.context.currentTime;
       this.master!.gain.setTargetAtTime(settings.audio ? settings.volume : 0, now, .025);
+      this.syncMatch(settings.audio && frame.scene === 3 && floodSeconds < 0 ? frame.sceneTime : -1, settings.speed);
       this.loop("run", settings.audio && frame.run > .25 && floodSeconds < 0, 1.65);
       this.loop("water", settings.audio && floodSeconds >= 0 && floodSeconds < FLOOD_DURATION);
       if (settings.audio) {
-        if (blinking && !this.lastBlink && floodSeconds < FLOOD_DURATION * .85) {
+        if (frame.scene !== 3 && blinking && !this.lastBlink && floodSeconds < FLOOD_DURATION * .85) {
           // A short descending pixel chirp on the lid closure.
           this.tone(1250, 520, .065, .09, "square");
         }

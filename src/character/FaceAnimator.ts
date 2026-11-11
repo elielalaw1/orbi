@@ -3,7 +3,7 @@ import type { GestureScene, Settings } from "../app/types";
 import { EmotionStateMachine, ease } from "./EmotionStateMachine";
 import { SpatialAnimator } from "./SpatialAnimator";
 type Routine = "lap" | "flirt" | GestureScene;
-const sceneIds: Record<GestureScene, number> = { gravity: 2 };
+const sceneIds: Record<GestureScene, number> = { gravity: 2, boxing: 3 };
 
 export class FaceAnimator {
   emotion = new EmotionStateMachine();
@@ -14,7 +14,8 @@ export class FaceAnimator {
     this.routine = {kind, start:now, target:roomToMaster(side*(30+Math.random()*32),12+Math.random()*22)};
   }
   cancelRoutine(){this.routine=null;}
-  routineActive(now:number){return !!this.routine&&now-this.routine.start<8000;}
+  private get duration(){return this.routine?.kind === "boxing" ? 15400 : 8000;}
+  routineActive(now:number){return !!this.routine&&now-this.routine.start<this.duration;}
   private nextBlink = 1200;
   private blinkStart = -1e9;
   private random = 92831;
@@ -48,7 +49,7 @@ export class FaceAnimator {
     if(this.routine){
       const t=now-this.routine.start;
       routineTime = t / 1000;
-      if(t>=8000){this.routine=null;this.spatial.center(now,s);}
+      if(t>=this.duration){this.routine=null;this.spatial.center(now,s);}
       else if(this.routine.kind==='lap'){
         const phase=Math.min(1,Math.max(0,(t-600)/6500))*Math.PI*2;
         run=ease(t/600)*ease((7800-t)/800);

@@ -87,7 +87,7 @@ export const defaults: Settings = {
   deadZone: 0.15,
   directionThreshold: 0.55,
 };
-export type GestureScene = 'gravity';
+export type GestureScene = 'gravity' | 'boxing';
 export type Action =
   | { type: "routine"; value: "lap" | "flirt" | GestureScene }
   | { type: "emotion"; value: Emotion }

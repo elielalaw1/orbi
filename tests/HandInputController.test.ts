@@ -131,7 +131,7 @@ it("requires both fingertip joins and fires once per held heart in either contro
 
 it("routes each held pair directly into its animated scene in both modes", () => {
   for (const navigationMode of ["gestures", "position"] as const) {
-    for (const [pose, id] of Object.entries({Thumb_Up:0, Closed_Fist:2, Open_Palm:0, Victory:0, Thumb_Down:0})) {
+    for (const [pose, id] of Object.entries({Thumb_Up:3, Closed_Fist:2, Open_Palm:0, Victory:0, Thumb_Down:0})) {
       const controller = new HandInputController();
       const store = new StateStore();
       store.settings.navigationMode = navigationMode;

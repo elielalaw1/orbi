@@ -156,6 +156,82 @@ vec3 gestureStage(vec3 ray,float scene,float t){
  return night;
 }
 
+// Pixel coordinates are angular, so the ring stays in front of the audience.
+bool boxPixel(vec2 p, vec2 halfSize){return all(lessThanEqual(abs(p),halfSize));}
+void boxingGlove(inout vec3 c, vec2 p,vec3 leather){
+ if(length(p)<4.4)c=vec3(.10,.06,.12);
+ if(length(p)<3.6)c=leather;
+ if(boxPixel(p-vec2(-1.,1.5),vec2(1.5,.55)))c=vec3(1.,.84,.67);
+}
+void boxer(inout vec3 c,vec2 p,float facing,float strike,float lift,float knocked,vec3 skin,vec3 leather){
+ p.x*=facing;
+ float angle=knocked*1.48;
+ p=mat2(cos(angle),-sin(angle),sin(angle),cos(angle))*p;
+ vec3 ink=vec3(.10,.065,.13);
+ if(boxPixel(p-vec2(-4.,-11.),vec2(3.,2.))||boxPixel(p-vec2(5.,-11.),vec2(3.,2.)))c=ink;
+ float head=length(p/vec2(10.,10.5));
+ if(head<1.12)c=ink;
+ if(head<1.)c=mix(skin*.78,skin,step(-5.,p.y));
+ if(head<1. && abs(p.y-7.)<1.4)c=leather;
+ for(int i=0;i<2;i++){
+   vec2 eye=p-vec2(-3.+6.*float(i),2.);
+   if(knocked>.45){
+     if(max(abs(eye.x),abs(eye.y))<2.5 && abs(abs(eye.x)-abs(eye.y))<1.)c=ink;
+   }else{
+     if(boxPixel(eye,vec2(2.,2.4)))c=vec3(1.,.98,.86);
+     if(boxPixel(eye-vec2(.8,0.),vec2(.85,1.5)))c=ink;
+     if(stroke(eye,vec2(-2.,4.),vec2(2.,3.),.7)>.5)c=ink;
+   }
+ }
+ if(boxPixel(p-vec2(2.,-4.),vec2(2.8,1.)))c=ink;
+ vec2 lead=mix(vec2(8.,-2.),vec2(25.,2.),strike);
+ lead=mix(lead,vec2(10.,13.),lift);
+ vec2 rear=vec2(-8.,-3.+lift*15.);
+ if(stroke(p,vec2(4.,-5.),lead,1.8)>.5 || stroke(p,vec2(-5.,-5.),rear,1.8)>.5)c=skin;
+ boxingGlove(c,p-lead,leather);
+ boxingGlove(c,p-rear,leather*.86);
+}
+vec3 boxingMatch(vec3 ray,float t){
+ float az=atan(ray.x,ray.y+.000001);
+ vec2 p=floor(vec2(az,asin(clamp(ray.z,-1.,1.))-.35)*78.);
+ vec3 c=p.y < -15.?vec3(.13,.22,.35):vec3(.065,.07,.17);
+ float row=floor((p.y+5.)/6.);
+ if(p.y>0. && p.y<31. && length(vec2(mod(p.x+row*3.,7.)-3.,mod(p.y+5.,6.)-3.))<2.)
+   c=mix(vec3(.20,.16,.37),vec3(.29,.24,.42),.5+.5*sin(row+p.x*.25));
+ if(abs(p.x)<48. && (abs(p.y+10.)<1. || abs(p.y+3.)<1. || abs(p.y-5.)<1.))c=vec3(.67,.37,.40);
+ if(abs(abs(p.x)-47.)<2. && p.y<9. && p.y> -16.)c=vec3(.85,.62,.34);
+ // Contact cues measured from the supplied voice recording, in seconds.
+ const float hits[10]=float[10](.845,1.23,1.53,1.79,3.03,3.20,3.51,5.22,5.47,6.32);
+ float jab=0.,recoil=0.,spark=0.;
+ for(int i=0;i<10;i++){
+   float d=t-hits[i];
+   jab=max(jab,smoothstep(-.12,0.,d)*(1.-smoothstep(.015,.14,d)));
+   recoil=max(recoil,smoothstep(-.015,.05,d)*(1.-smoothstep(.05,.20,d)));
+   spark=max(spark,1.-smoothstep(.02,.11,abs(d)));
+ }
+ float fall=smoothstep(6.32,7.12,t), lift=smoothstep(7.4,8.1,t);
+ float load=smoothstep(9.6,10.9,t);
+ float vanX= mix(156.,41.,smoothstep(7.8,9.6,t))+115.*smoothstep(11.6,14.3,t);
+ vec2 hero=vec2(-18.+jab*2.,-2.+(1.-lift)*abs(sin(t*8.))*1.5);
+ boxer(c,p-hero,1.,jab,lift,0.,vec3(1.,.78,.12),vec3(.94,.15,.15));
+ vec2 rival=mix(vec2(15.+recoil*4.+fall*7.,-2.-fall*6.),vec2(vanX-3.,-1.),load);
+ if(load<.99)boxer(c,p-rival,-1.,0.,0.,fall,vec3(.35,.83,.91),vec3(.24,.34,.88));
+ vec2 flash=p-vec2(9.,1.);
+ if(spark>.1 && length(flash)<7.*spark && min(min(abs(flash.x),abs(flash.y)),abs(abs(flash.x)-abs(flash.y)))<1.1)c=vec3(1.,.94,.59);
+ vec2 v=p-vec2(vanX,-3.);
+ if(boxPixel(v,vec2(13.,7.)) || boxPixel(v-vec2(14.,-2.),vec2(4.,5.)))c=vec3(.92,.95,.91);
+ if(boxPixel(v-vec2(12.,1.),vec2(3.,2.)))c=vec3(.22,.42,.54);
+ if(boxPixel(v-vec2(-2.,0.),vec2(1.,4.)) || boxPixel(v-vec2(-2.,0.),vec2(4.,1.)))c=vec3(.84,.12,.16);
+ if(load<.99 && boxPixel(v-vec2(-11.,-1.),vec2(2.,5.)))c=vec3(.18,.25,.32);
+ if(abs(abs(v.x-1.)-9.)<3. && abs(v.y+8.)<3.)c=vec3(.07,.08,.13);
+ if(boxPixel(v-vec2(5.,8.),vec2(3.,1.)))c=mix(vec3(.3,.52,.95),vec3(1.,.25,.18),step(.5,fract(t*3.)));
+ if(lift>.8){
+   vec2 crown=p-hero-vec2(0.,15.+floor(sin(t*4.)));
+   if(abs(crown.x)<6. && crown.y>=0. && crown.y<2.+abs(mod(crown.x+2.,4.)-2.))c=vec3(1.,.85,.24);
+ }
+ return c;
+}
+
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -184,6 +260,12 @@ void main(){
    float arc=atan(pixel.y,pixel.x);
    float band=fract(arc*3.1831-uRoutine.w*.85+floor(length(pixel)*28.)*.21);
    gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*step(.76,band)*step(.62,fract(length(pixel)*28.))*smoothstep(.15,.9,length(p)));
+ }
+ if(uScene.x==3. && uFloodTime<0.){
+   float t=uScene.y;
+   float fade=smoothstep(0.,.20,t)*(1.-smoothstep(14.6,15.4,t));
+   frag=vec4(mix(gold,boxingMatch(rd,t),fade)*uBrightness,1.);
+   return;
  }
  float sceneTime=uScene.y;
  float envelope=smoothstep(0.,.6,sceneTime)*(1.-smoothstep(7.,8.,sceneTime));
