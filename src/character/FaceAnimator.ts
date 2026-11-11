@@ -16,6 +16,7 @@ export class FaceAnimator {
   }
   cancelRoutine(){this.routine=null;}
   private get duration() {
+    if (this.routine?.kind === "rose") return 24000;
     if (this.routine?.kind === "escape") return ESCAPE_DURATION_MS;
     return this.routine?.kind === "boxing" ? 20000 : 8000;
   }
@@ -73,7 +74,8 @@ export class FaceAnimator {
           bounce=.025*Math.sin(t*.004);
         }
       }else{
-        scene=this.routine.kind === "escape" ? 0 : sceneIds[this.routine.kind] ?? 0;
+        if (this.routine.kind === "rose") scene = 4;
+        else if (this.routine.kind !== "escape") scene = sceneIds[this.routine.kind];
         sceneTime=t/1000;
       }
     }

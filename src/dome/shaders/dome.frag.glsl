@@ -269,6 +269,65 @@ vec3 boxingMatch(vec2 arena,float t){
  return c;
 }
 
+// Use a room-space tangent frame so the two faces can circle independently.
+vec2 roseLocal(vec3 ray,float azimuth,float elevation,float size){
+ float a=radians(azimuth),e=radians(elevation);
+ vec3 forward=vec3(sin(a)*cos(e),cos(a)*cos(e),sin(e));
+ vec3 right=vec3(cos(a),-sin(a),0.);
+ vec3 up=cross(right,forward);
+ float facing=dot(ray,forward);
+ if(facing<=0.)return vec2(1e4);
+ return degrees(vec2(dot(ray,right),dot(ray,up))) / (size*max(.1,facing));
+}
+void roseCharacter(inout vec3 color,vec2 p,float look,float shy,float smile,float visibility,vec3 gold){
+ vec2 pixel=floor(p)+.5;
+ float head=length(pixel/vec2(12.,11.));
+ if(head>1.11)return;
+ vec3 ink=vec3(.15,.064,.17);
+ vec3 face=head>1.?ink:mix(gold*.74,gold,smoothstep(-9.,2.,pixel.y));
+ if(head<1.){
+  for(int i=0;i<2;i++){
+   float side=float(i)*2.-1.;
+   vec2 eye=pixel-vec2(side*4.5,2.-shy*1.4);
+   if(boxPixel(eye,vec2(2.9,3.-shy*1.2)))face=vec3(1.,.97,.88);
+   if(boxPixel(eye-vec2(look*1.15,-shy*.7),vec2(1.4,1.8-shy*.6)))face=ink;
+   if(boxPixel(pixel-vec2(side*8.,-2.5),vec2(1.7,.8)))face=mix(face,vec3(.93,.24,.29),.27+shy*.47);
+  }
+  float mouthY=-5.+smile*.19*pixel.x*pixel.x;
+  if(abs(pixel.x)<3.9 && abs(pixel.y-mouthY)<.85)face=ink;
+ }
+ color=mix(color,face,visibility);
+}
+vec3 roseStory(vec3 ray,float t){
+ // They pass at different elevations, then the shy Orbi waits at the front.
+ float giver=mix(0.,172.,smoothstep(5.,13.7,t))
+   +165.*smoothstep(14.1,21.1,t);
+ float receiver=180.-155.*smoothstep(5.8,14.4,t)
+   -361.*smoothstep(14.5,19.3,t);
+ float giverElevation=22.+31.*(.5-.5*cos(radians(giver)));
+ float receiverElevation=22.+31.*(.5-.5*cos(radians(receiver)))
+   +24.*smoothstep(5.5,7.5,t)*(1.-smoothstep(18.,20.,t));
+ vec3 color=mix(vec3(.034,.021,.072),vec3(.19,.054,.15),smoothstep(-.2,.92,ray.z));
+ vec2 a=roseLocal(ray,giver,giverElevation,1.);
+ vec2 b=roseLocal(ray,receiver,receiverElevation,.96);
+ float shy=1.-smoothstep(19.5,22.,t);
+ roseCharacter(color,b,-.8,shy,.4+.55*(1.-shy),smoothstep(2.2,4.1,t),vec3(1.,.68,.33));
+ roseCharacter(color,a,.8,0.,.60+.35*smoothstep(19.8,21.9,t),1.,vec3(1.,.79,.17));
+ float reach=smoothstep(.6,2.0,t);
+ float meeting=smoothstep(19.7,21.5,t);
+ vec2 hand=vec2(13.+8.*meeting,-8.);
+ vec2 bud=hand+vec2(3.,13.+reach*2.);
+ vec2 pixel=floor(a)+.5;
+ float halo=exp(-dot(a-bud,a-bud)*.044);
+ color+=vec3(.43,.055,.13)*halo*reach;
+ if(stroke(pixel,vec2(10.,-5.),hand,1.45)>.5)color=vec3(.98,.73,.28);
+ if(stroke(pixel,hand,bud,.85)>.5 || stroke(pixel,hand+vec2(1.,6.),hand+vec2(-3.,9.),1.2)>.5)
+   color=vec3(.29,.71,.34);
+ if(abs(pixel.x-bud.x)+.85*abs(pixel.y-bud.y)<5.)
+   color=pixel.y>bud.y+1.?vec3(1.,.49,.56):vec3(.96,.10,.29);
+ if(boxPixel(pixel-hand,vec2(1.55)))color=vec3(1.,.86,.52);
+ return color;
+}
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -329,7 +388,7 @@ void main(){
    gold=mix(gold,stage,envelope*(1.-head));
  }
  float faceRadius=46.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
- if(uFloodTime<0. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
+ if(uFloodTime<0. && uScene.x!=4. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
    frag=vec4(clamp(gold*uBrightness,0.,1.),1.);
    return;
  }
@@ -472,6 +531,10 @@ void main(){
    if(length(q-hand)<3.5)col=vec3(1.,.89,.57);
  }
  col=mix(dryBackground,col,uEscape.x);
+ if(uScene.x==4. && uFloodTime<0.){
+   float reveal=smoothstep(0.,.65,uScene.y)*(1.-smoothstep(22.7,24.,uScene.y));
+   col=mix(col,roseStory(rd,uScene.y),reveal);
+ }
  if(uFloodTime>=0.){
   col=mix(col,dryBackground,smoothstep(104.,113.,uFloodTime));
   col=floodWater(col,rd,uFloodTime,waterDepth);
