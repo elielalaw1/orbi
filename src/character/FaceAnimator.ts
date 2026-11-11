@@ -35,14 +35,18 @@ export class FaceAnimator {
     this.random = state.random;
   }
   sample(now: number, s: Settings) {
+    let run=0;
     let hearts=0,kiss=0,wink=0,bounce=0;
     if(this.routine){
       const t=now-this.routine.start;
       if(t>=8000){this.routine=null;this.spatial.center(now,s);}
       else if(this.routine.kind==='lap'){
         const phase=Math.min(1,Math.max(0,(t-600)/6500))*Math.PI*2;
-        this.spatial.moveTo(Math.sin(phase)*.72,-Math.cos(phase)*.72,now,s);
-        bounce=Math.sin(t*.025)*.035;
+        run=ease(t/600)*ease((7800-t)/800);
+        const stride=Math.abs(Math.sin(t*.009));
+        const radius=.70+.045*stride*run;
+        this.spatial.moveTo(Math.sin(phase)*radius,-Math.cos(phase)*radius,now,s);
+        bounce=(stride-.45)*.095*run;
       }else{
         this.spatial.moveTo(...roomToMaster(65,20),now,s);
         if(t>900){hearts=1;kiss=.7+.3*Math.sin(t*.008);wink=Math.pow(Math.max(0,Math.sin(t*.005)),8);}
@@ -68,7 +72,7 @@ export class FaceAnimator {
     expression.wink*=Math.pow(Math.max(0,Math.sin(now*.0018)),10);
     expression.wink=Math.max(expression.wink,wink);
     return {
-      hearts,kiss,
+      hearts,kiss,run,seconds:now/1000,
       expression,
       position,
       blink,

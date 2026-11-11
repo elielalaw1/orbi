@@ -2,7 +2,7 @@
 precision highp float;
 out vec4 frag;
 uniform vec2 uRes;
-uniform vec2 uRoutine;
+uniform vec4 uRoutine;
 uniform vec3 uColor;
 uniform vec4 uExpression; // eye height, smile, mouth opening, eyebrow lift
 uniform vec4 uFace; // azimuth, elevation, scale, roll
@@ -62,6 +62,25 @@ void main(){
  // Outside the face footprint the dome has one flat colour.
  // The 40-degree radius encloses the 30 by 25 degree facial bounds.
  vec3 gold=mix(vec3(1.,.76,.09),uColor,.16);
+ // The emotional colour eases back to gold as the character cools.
+ float heat=1.-smoothstep(.11,.46,uColor.g);
+ gold=mix(gold,vec3(.96,.09,.035),heat);
+ if(heat>.001){
+   float az=atan(rd.x,rd.y);
+   float elevation=asin(clamp(rd.z,-1.,1.));
+   float t=uRoutine.w;
+   float cell=floor(az*90.)/90.;
+   float height=.24*sin(7.*cell+1.6*t)+.16*sin(13.*cell-2.1*t)+.09*sin(29.*cell+t*3.);
+   float edge=heat*2.2-1.12+height*heat;
+   float flame=1.-smoothstep(edge-.07,edge,elevation);
+   float core=1.-smoothstep(edge-.50,edge-.32,elevation);
+   gold=mix(gold,mix(vec3(1.,.27,.015),vec3(1.,.65,.08),core),flame*heat*.88);
+ }
+ if(uRoutine.z>.001){
+   float arc=atan(p.y,p.x);
+   float band=fract(arc*3.1831-uRoutine.w*.85+floor(length(p)*14.)*.21);
+   gold=mix(gold,vec3(1.,.94,.48),uRoutine.z*.33*smoothstep(.68,.96,band)*smoothstep(.15,.9,length(p)));
+ }
  float faceRadius=40.*uFace.z*uMotion.w*(1.+abs(uExtra.y));
  if(uFloodTime<0. && !uGuides && dot(rd,forward)<cos(radians(min(180.,faceRadius+2.)))){
    frag=vec4(clamp(gold*uBrightness,0.,1.),1.);
@@ -96,11 +115,11 @@ void main(){
   col=mix(col,uColor*.65,contact*.11);
   // Broad cool-white cartoon eyes, solid pupils; no anatomical iris or skin texture.
   vec3 white=mix(vec3(.77,.79,.96),vec3(.98,.97,1.),smoothstep(-.8,.5,ep.y/max(height,.32)));
-  col=mix(col,vec3(.17,.12,.23),eye);
+  col=mix(col,vec3(1.,.92,.74),eye);
   vec2 gaze=vec2(clamp(uMotion.x,-1.,1.)*3.2,clamp(uMotion.y,-1.,1.)*2.5);
-  vec2 pupilR=vec2(4.15,min(5.0,max(.2,height*.65)));
+  vec2 pupilR=vec2(5.4,min(6.8,max(.2,height*.78)));
   float pupil=mask(ellipse(ep-gaze,pupilR))*eye;
-  col=mix(col,vec3(.008,.009,.02),pupil);
+  col=mix(col,vec3(.13,.075,.095),pupil);
   float glint=mask(ellipse(ep-gaze-vec2(-1.0,1.4),vec2(1.4,min(1.4,height*.3))));
   col=mix(col,vec3(1.,.99,1.),glint*pupil);
   if(uRoutine.x>0.){

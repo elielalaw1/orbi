@@ -41,7 +41,8 @@ export class EmotionStateMachine {
     Object.assign(this, state);
   }
   tick(now: number, s: Settings) {
-    if (this.emotion !== "neutral" && now - this.lastInteraction > s.idleMs)
+    if ((this.emotion === "angry" && now - this.changed >= 4500) ||
+        (this.emotion !== "neutral" && now - this.lastInteraction > s.idleMs))
       this.trigger("neutral", now, s);
   }
 }

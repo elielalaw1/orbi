@@ -79,7 +79,7 @@ export class DomeRenderer {
     }
     gl.useProgram(this.program);
     gl.uniform1f(u("uFloodTime"), floodTime);
-    gl.uniform2f(u("uRoutine"),f.hearts,f.kiss);
+    gl.uniform4f(u("uRoutine"),f.hearts,f.kiss,f.run,f.seconds);
     gl.uniform2f(u("uRes"), resolution, resolution);
     gl.uniform3fv(u("uColor"), f.expression.color);
     gl.uniform4f(
