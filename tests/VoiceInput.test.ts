@@ -3,8 +3,8 @@ import {voiceCommand,acceptedVoiceCommand} from '../src/gesture/VoiceInput';
 import {StateStore} from '../src/app/StateStore';
 it('recognizes English routines and rejects partial words and gesture navigation',()=>{
  expect(voiceCommand('Orbi, run!')).toBe('lap');
- expect(voiceCommand('Flirt.')).toBeNull();
- expect(voiceCommand('flirting')).toBeNull();
+ expect(voiceCommand('Flirt.')).toBe('flirt');
+ expect(voiceCommand('flirting')).toBe('flirt');
  expect(voiceCommand('go right')).toBeNull();
 });
 it('reserves routine control, restores hand control, and allows reset',()=>{
@@ -20,14 +20,19 @@ it('reserves routine control, restores hand control, and allows reset',()=>{
 });
 
 it('requires a whole command and rejects negations, similar words and extra phrases',()=>{
- for(const text of ['take a lap','do not run','running','please run','do not flirt','stop flirting','please take a lap','take a laptop','flirt with me','take a lap and flirt','Orbi do not flirt','take-a-lap'])expect(voiceCommand(text)).toBeNull();
+ for(const text of ['do not run','do not flirt','stop flirting','take a laptop','take a lap and flirt','Orbi do not flirt','take-a-lap'])expect(voiceCommand(text)).toBeNull();
  expect(voiceCommand('  ORBI, run! ')).toBe('lap');
- expect(voiceCommand('Orbi flirt')).toBeNull();
+ expect(voiceCommand('Orbi flirt')).toBe('flirt');
 });
 it('rejects low-confidence final matches without guessing from alternatives',()=>{
- expect(acceptedVoiceCommand('run',.79)).toBeNull();
+ expect(acceptedVoiceCommand('run',.49)).toBeNull();
  expect(acceptedVoiceCommand('run',.8)).toBe('lap');
  expect(acceptedVoiceCommand('run',0)).toBe('lap');
  expect(acceptedVoiceCommand('run')).toBe('lap');
- expect(acceptedVoiceCommand('flirting',.99)).toBeNull();
+ expect(acceptedVoiceCommand('flirting',.65)).toBe('flirt');
+});
+
+it('accepts close English variants and polite requests',()=>{
+ for(const phrase of ['running','ron','rum','ran','please run','Orbi take a lap']) expect(voiceCommand(phrase)).toBe('lap');
+ for(const phrase of ['flert','flurt','flirting','please flirt','flirt with me']) expect(voiceCommand(phrase)).toBe('flirt');
 });

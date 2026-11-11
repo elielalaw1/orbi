@@ -57,8 +57,8 @@ export function heartHands(a: Landmark[], b: Landmark[]) {
   if (scale < .025) return false;
   const [left,right] = a[5].x < b[5].x ? [a,b] : [b,a];
   const mid = (a[8].x+b[8].x)/2;
-  return gap(a[8],b[8]) < .57*scale && gap(a[4],b[4]) < .57*scale
-    && [a,b].every(h=>h[4].y-h[8].y > .43*scale && h[4].y-h[8].y < 2.4*scale)
-    && mid-left[6].x > .24*scale && right[6].x-mid > .24*scale
-    && Math.abs(mid-(a[4].x+b[4].x)/2) < .64*scale;
+  return gap(a[8],b[8]) < .80*scale && gap(a[4],b[4]) < .80*scale
+    && [a,b].every(h=>h[4].y-h[8].y > .30*scale && h[4].y-h[8].y < 2.4*scale)
+    && mid-left[6].x > .18*scale && right[6].x-mid > .18*scale
+    && Math.abs(mid-(a[4].x+b[4].x)/2) < .80*scale;
 }

@@ -124,7 +124,7 @@ it("requires both fingertip joins and fires once per held heart in either contro
     expect(c.update(pair,1800,s).actions).not.toContainEqual(fire);
     expect(c.update(pair,2600,s).actions).not.toContainEqual(fire);
     pair[0].landmarks[4].x=.49;
-    expect(c.update(pair,2650,s).actions).toEqual([]);
+    expect(c.update(pair,2800,s).actions).toEqual([]);
     expect(c.update(pair,3350,s).actions).toEqual([fire]);
   }
 });
@@ -147,4 +147,19 @@ it("routes each held pair directly into its animated scene in both modes", () =>
       if (id) expect(frame.sceneTime).toBe(.5);
     }
   }
+});
+
+
+it("accepts moderate-confidence pairs and survives a short classification dropout", () => {
+ const controller = new HandInputController();
+ const hands = [detection("Left", "Victory"), detection("Right", "Victory")];
+ hands.forEach(h => h.score = .56);
+ const s = {...defaults, navigationMode: "gestures" as const};
+ expect(controller.update(hands, 0, s).actions).toEqual([]);
+ controller.update(hands, 250, s);
+ expect(controller.update([], 300, s).actions).not.toContainEqual({type:"routine",value:"ghost"});
+ controller.update(hands, 350, s);
+ controller.update([], 420, s);
+ expect(controller.update(hands, 500, s).actions).toEqual([{type:"routine",value:"ghost"}]);
+ expect(controller.update(hands, 600, s).actions).toEqual([]);
 });

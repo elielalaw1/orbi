@@ -10,8 +10,8 @@ export class MediaPipeRecognizer {
       },
       runningMode: "VIDEO",
       numHands: 2,
-      minHandDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
+      minHandDetectionConfidence: 0.45,
+      minTrackingConfidence: 0.45,
     });
     try { this.recognizer = await create("GPU"); }
     catch { this.recognizer = await create("CPU"); }

@@ -27,12 +27,15 @@ export class HandInputController {
   private initialized = false;
   private heartSince: number | null = null;
   private heartFired = false;
+  private heartSeen = -Infinity;
+  private pairSeen = -Infinity;
   update(hands: HandDetection[], now: number, s: Settings) {
-    if (hands.length === 2 && hands.every(h=>h.handednessScore >= .55) &&
+    if (hands.length === 2 && hands.every(h=>h.handednessScore >= .45) &&
         heartHands(hands[0].landmarks,hands[1].landmarks)) {
+      this.heartSeen = now;
       this.heartSince ??= now;
       const actions: Action[] = [];
-      if (!this.heartFired && now-this.heartSince >= 650) {
+      if (!this.heartFired && now-this.heartSince >= 450) {
         actions.push({type:"routine",value:"flirt"});
         this.heartFired = true;
       }
@@ -40,12 +43,18 @@ export class HandInputController {
       const label = this.heartFired ? "Heart · flirt" : "Hold your heart";
       return {actions,controlIndex:0,label,positionLabel:label,score:Math.min(...hands.map(h=>h.handednessScore))};
     }
+    if (now - this.heartSeen < 180) {
+      return {actions: [] as Action[], controlIndex: -1, label: "Hold your heart",
+        positionLabel: "Hold your heart", score: 0};
+    }
     this.heartSince = null;
     this.heartFired = false;
     const first = hands[0];
     const matching = hands.length === 2 && hands.every(h =>
-      h.landmarks.length === 21 && h.gesture === first.gesture && h.score >= s.confidence);
-    const scene = matching ? pairScenes.get(first.gesture ?? "") : undefined;
+      h.landmarks.length === 21 && h.gesture === first.gesture && h.score >= Math.max(.45, s.confidence - .15));
+    const detectedScene = matching ? pairScenes.get(first.gesture ?? "") : undefined;
+    if (detectedScene) this.pairSeen = now;
+    const scene = detectedScene ?? (now - this.pairSeen < 180 ? this.pair : undefined);
     if (scene !== this.pair) {
       this.pair = scene;
       this.pairSince = now;
@@ -53,13 +62,13 @@ export class HandInputController {
     }
     if (scene) {
       const actions: Action[] = [];
-      if (!this.pairFired && now - this.pairSince >= 650) {
+      if (detectedScene && !this.pairFired && now - this.pairSince >= 450) {
         actions.push({type: "routine", value: scene});
         this.pairFired = true;
       }
       const label = this.pairFired ? scene : `Hold for ${scene}`;
-      return {actions, controlIndex: 0, label, positionLabel: label,
-        score: Math.min(first.score, hands[1].score)};
+      return {actions, controlIndex: hands.length ? 0 : -1, label, positionLabel: label,
+        score: detectedScene ? Math.min(first.score, hands[1].score) : 0};
     }
     if (s.navigationMode === "gestures") return this.updateCommands(hands, now, s);
     const controlIndex = hands.reduce(
@@ -165,6 +174,7 @@ export class HandInputController {
   }
   clear() {
     this.heartSince=null;this.heartFired=false;
+    this.heartSeen=-Infinity;this.pairSeen=-Infinity;
     this.pair=undefined;this.pairFired=false;
     this.left.clear();
     this.position.clear();
