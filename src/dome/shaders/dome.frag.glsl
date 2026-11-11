@@ -59,6 +59,23 @@ float stroke(vec2 p, vec2 a, vec2 b, float width){
  vec2 axis=b-a;
  return step(length(p-a-axis*clamp(dot(p-a,axis)/max(.001,dot(axis,axis)),0.,1.)),width);
 }
+// A compact arcade flame in local coordinates: y=0 at its base, y=1 at its tip.
+vec4 arcadeFlame(vec2 uv,float beat){
+ vec2 g=(floor(uv*22.)+.5)/22.;
+ float y=g.y;
+ if(y<0. || y>1.12)return vec4(0.);
+ float x=g.x-.18*y*y*sin(beat+5.*y);
+ float belly=.46*sqrt(max(0.,1.-pow((y-.31)/.69,2.)))*(1.-smoothstep(.28,1.,y));
+ float fork=.13*(1.-smoothstep(.23,.74,y));
+ bool outer=abs(x)<belly || abs(x+.39-.14*y)<fork || abs(x-.34-.13*y)<fork*.85;
+ if(!outer)return vec4(0.);
+ float inner=abs(x+.04*sin(beat+y*7.))/max(.015,belly);
+ vec3 color=vec3(.83,.105,.045);
+ if(inner<.81 && y<.81)color=vec3(1.,.36,.015);
+ if(inner<.57 && y<.62)color=vec3(1.,.79,.035);
+ if(inner<.27 && y<.31)color=vec3(1.,.95,.48);
+ return vec4(color,1.);
+}
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -71,17 +88,16 @@ void main(){
  gold=mix(gold,vec3(.96,.09,.035),heat);
  if(heat>.001){
    float az=atan(rd.x,rd.y);
-   float elevation=floor(asin(clamp(rd.z,-1.,1.))*65.)/65.;
-   float t=uRoutine.w;
-   float cell=floor(az*90.)/90.;
-   float height=.24*sin(7.*cell+1.6*t)+.16*sin(13.*cell-2.1*t)+.09*sin(29.*cell+t*3.);
-   float tongue=pow(max(0.,sin(cell*21.+.8*sin(elevation*6.-t*4.))),3.);
-   float edge=heat*(1.80+.60*tongue)-1.12+height*heat;
-   float flame=1.-smoothstep(edge-.07,edge,elevation);
-   float core=1.-smoothstep(edge-.50,edge-.32,elevation);
-   gold=mix(gold,mix(vec3(1.,.22,.012),vec3(1.,.71,.06),step(.5,core)),step(.5,flame)*heat);
-   vec2 spark=fract(vec2(cell*7.,elevation*1.7-t*.72+sin(floor(cell*7.)*9.)));
-   if(elevation>edge && spark.x<.13 && spark.y<.08)gold=mix(gold,vec3(1.,.84,.21),heat);
+   float elevation=asin(clamp(rd.z,-1.,1.));
+   float lane=(az+PI)*(18./(2.*PI));
+   float seed=floor(lane);
+   float beat=floor(uRoutine.w*10.)*.48+seed*2.4;
+   float height=heat*(1.25+.32*sin(seed*3.1)+.18*sin(beat));
+   vec2 uv=vec2(fract(lane)-.5,(elevation+.48)/max(.01,height));
+   vec4 fire=arcadeFlame(uv,beat);
+   gold=mix(gold,fire.rgb,fire.a*heat);
+   vec2 ember=vec2(fract(lane)-.5-.17*sin(beat*.5),uv.y-.78-fract(beat*.12)*.52);
+   if(abs(ember.x)<.045 && abs(ember.y)<.035)gold=mix(gold,vec3(1.,.69,.08),heat);
  }
  if(uRoutine.z>.001){
    vec2 pixel=floor(p*115.)/115.;
@@ -175,8 +191,8 @@ void main(){
      vec2 shoe=q-foot-vec2(1.8,0.);
      if(abs(shoe.y)<2.1 && abs(shoe.x)<4.5)col=mix(col,shoe.y<-.7?vec3(1.,.92,.68):vec3(.82,.09,.05),uRoutine.z);
      vec2 exhaust=q-foot+vec2(7.,0.);
-     float plume=1.-abs(exhaust.x)/6.-abs(exhaust.y+.8*sin(exhaust.x+cycle))/2.;
-     if(exhaust.x<3. && plume>0.)col=mix(col,plume>.4?vec3(1.,.83,.10):vec3(1.,.28,.02),uRoutine.z);
+     vec4 jet=arcadeFlame(vec2(exhaust.y/5.,(4.-exhaust.x)/12.),cycle);
+     col=mix(col,jet.rgb,jet.a*uRoutine.z);
    }
  }
  if(f>0. && uRoutine.y>0.){
