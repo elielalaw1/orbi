@@ -69,7 +69,7 @@ function boot() {
 <section class="title-row"><div><div class="eyebrow">AN INTERACTIVE DOME EXPERIENCE</div><h1>Bring the room to life<span>.</span></h1><p>Your gestures. Their feelings. One very big personality.</p></div><button class="primary" id="open-output">Launch dome output <span>↗</span></button></section>
 <div class="studio-grid"><section class="preview-panel panel"><div class="panel-head"><h2><i class="live-dot"></i> <span id="view-title">In the dome</span> <span class="tag">LIVE SIMULATOR</span></h2><button class="text-button" id="toggle-simulator">View dome master</button><button class="text-button" id="guides">⌖ <span>Show guides</span> <kbd>G</kbd></button></div><div class="preview-stage simulator-view"><iframe id="simulator" src="${import.meta.env.BASE_URL}simulator/index.html?embedded" title="Live Wisdome simulator" allow="fullscreen" loading="eager"></iframe><div class="orbital-ring"></div><canvas id="dome" aria-label="Live fisheye dome-master preview"></canvas><div class="stage-label">160° EQUIDISTANT FISHEYE</div><div class="stage-north">BACK / ZENITH <span>↑</span></div><div class="stage-front">↓ <span>FRONT OF VENUE</span></div></div><div class="preview-footer"><div><i class="live-dot"></i><span id="emotion-label">Neutral</span><span class="muted" id="activity">Feeling at home</span></div><div><span id="fps">— FPS</span><span class="divider">/</span><span id="resolution-label">1024 × 1024</span><button id="snapshot" class="text-button" aria-label="Save dome image">↓ PNG</button></div></div></section>
 <aside class="sim-side panel" aria-label="Simulator controls"><div class="sim-switch"><button id="index-tab" aria-pressed="true">Animations</button><button id="input-tab" aria-pressed="false">Camera input</button></div>
-<section id="animation-index"><h2>Animation index</h2><p>Select a scene to play it. With the camera on, hold a two-hand gesture briefly.</p>
+<section id="animation-index"><button id="test-scene-audio" class="secondary">Enable / test sound</button><h2>Animation index</h2><p>Select a scene to play it. With the camera on, hold a two-hand gesture briefly.</p>
 ${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="${i}"><span><strong>${name}</strong><small>${cue}</small></span><span aria-hidden="true">▶</span></button>`).join("")}</section>
 <section id="camera-input" class="camera-panel" hidden><div class="panel-head"><h2>Gesture input</h2><span class="tiny-status" id="input-mode">MANUAL</span></div><div class="camera-view"><video id="camera" playsinline muted></video><canvas id="landmarks"></canvas><div id="camera-empty"><div class="camera-icon">⌁</div><h3>A wave is all it takes.</h3><p>Connect your camera to give<br>ORBI something to react to.</p></div><span class="camera-badge" id="camera-badge">CAMERA OFF</span></div><button id="camera-toggle" class="camera-start">◉ &nbsp; Start camera <span>↗</span></button><div class="telemetry"><div><span>Detected gesture</span><strong id="gesture">No gesture</strong></div><div><span>Confidence</span><strong id="confidence">—</strong></div><div><span>Direction</span><strong id="direction">Centered</strong></div><div><span>Model</span><strong id="model">Not loaded</strong></div><div><span>Inference time</span><strong id="inference-cost">—</strong></div></div><div class="hint"><span>✦</span><p>Point to move directly. Hold other gestures briefly to change emotion.</p></div></section></aside>
 <section class="emotion-panel panel"><div class="panel-head"><h2>Set the mood <span class="muted normal">A feeling fills the whole dome.</span></h2><span class="tiny-status">KEYS 1–6</span></div><div class="emotion-buttons">${emotions.map((e, i) => `<button class="emotion-button ${e === "neutral" ? "selected" : ""}" data-emotion="${e}" aria-pressed="${e === "neutral"}"><span class="emotion-face ${e}">${icons[e]}</span><strong>${e[0].toUpperCase() + e.slice(1)}</strong><span class="gesture-name">${["No gesture", "Thumbs up", "Thumbs down", "Middle finger", "Open palm", "Peace sign"][i]}</span><kbd>${i + 1}</kbd></button>`).join("")}</div></section>
@@ -598,11 +598,15 @@ ${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="
     }
   }
   if (!output) {
-    $("simulator").addEventListener("load", () =>
+    $("simulator").addEventListener("load", () => {
+      const simulatorDocument = $<HTMLIFrameElement>("simulator").contentDocument;
+      simulatorDocument?.addEventListener("pointerdown", () => {
+        if (store.settings.audio) void sound.unlock().catch(() => {});
+      });
       pauseSimulator(
         !dashboardOpen || !previewDock.classList.contains("simulator-view"),
-      ),
-    );
+      );
+    });
     $("toggle-simulator").onclick = () => {
       const stage = document.querySelector(".preview-stage")!;
       const inSimulator = stage.classList.toggle("simulator-view");
@@ -635,6 +639,17 @@ ${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="
       $("index-tab").setAttribute("aria-pressed", String(show));
       $("input-tab").setAttribute("aria-pressed", String(!show));
     }
+    $("test-scene-audio").onclick = async () => {
+      try {
+        await sound.unlock();
+        dispatch({type: "settings", value: {audio: true}});
+        ($("audio") as HTMLInputElement).checked = true;
+        sound.play("happy", store.settings);
+        $("test-scene-audio").textContent = "Sound enabled · test again";
+      } catch {
+        $("test-scene-audio").textContent = "Sound blocked · click to retry";
+      }
+    };
     $("index-tab").onclick = () => showIndex(true);
     $("input-tab").onclick = () => showIndex(false);
     for (const button of document.querySelectorAll<HTMLButtonElement>(".scene-entry")) {
@@ -873,6 +888,7 @@ ${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="
       ? (square ? (sync.latest ? store.settings.resolution : 1024) : 2160)
       : store.settings.resolution;
     renderer.render(frame, store.settings, resolution, cueTime);
+    if (!output) sound.update(frame, elapsed, store.settings);
     if (!output) {
       if (now - lastSync > 33) {
         sync.send({
