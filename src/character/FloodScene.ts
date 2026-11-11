@@ -55,6 +55,7 @@ export function floodFrame(frame: Frame, seconds: number): Frame {
       brow: expression.brow + panic * .3 * Math.sin(seconds * 2.1),
       tilt: expression.tilt + panic * .18 * Math.sin(seconds * 1.7),
     },
+    fire: 0,
     run: 0,
     scene: 0,
     sceneTime: 0,

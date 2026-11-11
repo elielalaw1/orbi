@@ -5,6 +5,11 @@
 - **DM Sans**, Colophon Foundry and contributors, SIL Open Font License 1.1. **Manrope**, Mikhail Sharanda and contributors, SIL Open Font License 1.1. Fonts downloaded from Google Fonts and self-hosted in `public/fonts/`, with their license files alongside.
 - Vite (MIT), TypeScript (Apache-2.0), Vitest (MIT), Playwright (Apache-2.0), Node typings (MIT): package notices remain in installed dependencies. Exact versions are pinned by `package-lock.json`.
 
-No Sphere character artwork, third-party character textures, stock sounds, or emoji image assets are used. All character rendering and optional tones are procedural.
+Character rendering is procedural. Recorded audio in public/audio is licensed separately from the application code.
+- run.mp3 — “Cartoon Running” by Cam, CC BY 3.0, https://soundbible.com/1979-Cartoon-Running.html. Original recording bundled unchanged, played at 1.65× speed in the app.
+- water.mp3 — “Bubbling” by Mike Koenig, CC BY 3.0, https://soundbible.com/1148-Bubbling.html. Bundled unchanged and looped during the flood.
+- kiss.mp3 — “Cartoon Smooch” by Breviceps, CC0, https://freesound.org/people/Breviceps/sounds/444493/. Freesound MP3 preview bundled unchanged.
+CC BY 3.0 license https://creativecommons.org/licenses/by/3.0/
+CC0 dedication https://creativecommons.org/publicdomain/zero/1.0/
 
 The official Wisdome Dome Simulator is bundled at `public/simulator/index.html` (GPL-3.0). Adaptations add live same-origin canvas input, compact seat controls, and ORBI keyboard forwarding. Its projection, dome geometry, seat calculations and cross-reflection shader remain the official implementation. The original full source is https://dcuartielles.github.io/wisdome-360/tools/dome-simulator.html.

@@ -36,3 +36,15 @@ it('accepts close English variants and polite requests',()=>{
  for(const phrase of ['running','ron','rum','ran','please run','Orbi take a lap']) expect(voiceCommand(phrase)).toBe('lap');
  for(const phrase of ['flert','flurt','flirting','please flirt','flirt with me']) expect(voiceCommand(phrase)).toBe('flirt');
 });
+
+it('blows exactly two kisses during one flirt routine',()=>{
+ const store=new StateStore();
+ store.dispatch({type:'routine',value:'flirt'});
+ let kissing=false, kisses=0;
+ for(let time=0;time<8000;time+=20){
+  const active=store.animator.sample(time,store.settings).kiss>.7;
+  if(active&&!kissing)kisses++;
+  kissing=active;
+ }
+ expect(kisses).toBe(2);
+});

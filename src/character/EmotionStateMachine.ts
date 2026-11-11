@@ -25,7 +25,7 @@ export class EmotionStateMachine {
       ease((now - this.changed) / dur),
       ease(
         (now - this.changed) /
-          (this.emotion === "neutral" ? s.returnMs : s.colorMs),
+          (this.emotion === "neutral" ? (this.from.color[1] < .3 ? 4500 : s.returnMs) : s.colorMs),
       ),
     );
   }

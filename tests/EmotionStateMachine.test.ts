@@ -26,10 +26,28 @@ it("returns smoothly to idle and can serialize for output", () => {
   m.sample(7000, defaults).color.forEach((v, i) =>
     expect(v).toBeCloseTo(presets.angry.color[i]),
   );
-  m.sample(9000, defaults).color.forEach((v, i) =>
+  expect(m.sample(9000, defaults).color[1]).toBeLessThan(presets.neutral.color[1]);
+  m.sample(11600, defaults).color.forEach((v, i) =>
     expect(v).toBeCloseTo(presets.neutral.color[i]),
   );
   const n = new EmotionStateMachine();
   n.restore(m.snapshot());
   expect(n.sample(9000, defaults)).toEqual(m.sample(9000, defaults));
+});
+
+
+it("lets the flames end before the red dome cools to yellow", async () => {
+ const { FaceAnimator } = await import("../src/character/FaceAnimator");
+ const face = new FaceAnimator();
+ face.emotion.trigger("angry", 0, defaults);
+ expect(face.sample(1000, defaults).fire).toBeGreaterThan(.9);
+ const red = face.sample(3000, defaults);
+ expect(red.fire).toBe(0);
+ expect(red.expression.color[1]).toBeLessThan(.2);
+ face.sample(4500, defaults);
+ const cooling = face.sample(6500, defaults);
+ expect(cooling.fire).toBe(0);
+ expect(cooling.expression.color[1]).toBeGreaterThan(.2);
+ expect(cooling.expression.color[1]).toBeLessThan(.8);
+ expect(face.sample(9200, defaults).expression.color[1]).toBeCloseTo(.8);
 });

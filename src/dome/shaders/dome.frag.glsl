@@ -4,6 +4,7 @@ out vec4 frag;
 uniform vec2 uRes;
 uniform vec4 uRoutine;
 uniform vec2 uScene;
+uniform float uFire;
 uniform vec3 uColor;
 uniform vec4 uExpression; // eye height, smile, mouth opening, eyebrow lift
 uniform vec4 uFace; // azimuth, elevation, scale, roll
@@ -165,18 +166,18 @@ void main(){
  // The emotional colour eases back to gold as the character cools.
  float heat=1.-smoothstep(.11,.46,uColor.g);
  gold=mix(gold,vec3(.96,.09,.035),heat);
- if(heat>.001){
+ if(uFire>.001){
    float az=atan(rd.x,rd.y);
    float elevation=asin(clamp(rd.z,-1.,1.));
    float lane=(az+PI)*(18./(2.*PI));
    float seed=floor(lane);
    float beat=floor(uRoutine.w*10.)*.48+seed*2.4;
-   float height=heat*(1.25+.32*sin(seed*3.1)+.18*sin(beat));
+   float height=uFire*(1.25+.32*sin(seed*3.1)+.18*sin(beat));
    vec2 uv=vec2(fract(lane)-.5,(elevation+.48)/max(.01,height));
    vec4 fire=arcadeFlame(uv,beat);
-   gold=mix(gold,fire.rgb,fire.a*heat);
+   gold=mix(gold,fire.rgb,fire.a*uFire);
    vec2 ember=vec2(fract(lane)-.5-.17*sin(beat*.5),uv.y-.78-fract(beat*.12)*.52);
-   if(abs(ember.x)<.045 && abs(ember.y)<.035)gold=mix(gold,vec3(1.,.69,.08),heat);
+   if(abs(ember.x)<.045 && abs(ember.y)<.035)gold=mix(gold,vec3(1.,.69,.08),uFire);
  }
  if(uRoutine.z>.001){
    vec2 pixel=floor(p*115.)/115.;

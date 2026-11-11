@@ -60,7 +60,10 @@ export class FaceAnimator {
         this.spatial.moveTo(...(this.routine.target ?? roomToMaster(50,20)),now,s);
         if(t>900){
           hearts=ease((t-900)/600);
-          kiss=Math.pow(Math.max(0,Math.sin((t-900)*.005)),4);
+          const firstKiss = Math.max(0, Math.min(1, (t-1400)/1100));
+          const secondKiss = Math.max(0, Math.min(1, (t-4300)/1100));
+          kiss = Math.pow(Math.sin(firstKiss*Math.PI), 2) +
+            Math.pow(Math.sin(secondKiss*Math.PI), 2);
           wink=.85*Math.pow(Math.max(0,Math.sin(t*.003)),6);
           bounce=.025*Math.sin(t*.004);
         }
@@ -112,6 +115,10 @@ export class FaceAnimator {
     expression.wink*=Math.pow(Math.max(0,Math.sin(now*.0018)),10);
     expression.wink=Math.max(expression.wink,wink);
     return {
+      fire: this.emotion.emotion === "angry"
+        ? ease((now-this.emotion.snapshot().changed)/300) *
+          (1-ease((now-this.emotion.snapshot().changed-1800)/900))
+        : 0,
       scene,sceneTime,hearts,kiss,run,routineTime,seconds:now/1000,
       expression,
       position,

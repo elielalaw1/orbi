@@ -10,7 +10,43 @@ export class SoundEngine {
   private lastKiss = false;
   private lastAngry = false;
   private nextTexture = 0;
-  private nextStep = 0;
+  private clips = new Map<string, AudioBuffer>();
+  private loading: Promise<void> | null = null;
+  private loops = new Map<string, {source: AudioBufferSourceNode; gain: GainNode}>();
+
+  private async loadClips() {
+    await Promise.all(["kiss", "run", "water"].map(async name => {
+      if (this.clips.has(name)) return;
+      const response = await fetch(`${import.meta.env.BASE_URL}audio/${name}.mp3`);
+      if (!response.ok) throw new Error(`Could not load ${name} audio`);
+      this.clips.set(name, await this.context!.decodeAudioData(await response.arrayBuffer()));
+    }));
+  }
+
+  private sample(name: string, loop = false, rate = 1) {
+    const buffer = this.clips.get(name);
+    if (!buffer) return;
+    const source = this.context!.createBufferSource();
+    const gain = this.context!.createGain();
+    source.buffer = buffer;
+    source.loop = loop;
+    source.playbackRate.value = rate;
+    gain.gain.value = name === "water" ? 1.1 : 1.6;
+    source.connect(gain).connect(this.master!);
+    source.onended = () => { source.disconnect(); gain.disconnect(); };
+    source.start();
+    if (loop) this.loops.set(name, {source, gain});
+  }
+
+  private loop(name: string, active: boolean, rate = 1) {
+    const playing = this.loops.get(name);
+    if (active && !playing) this.sample(name, true, rate);
+    if (!active && playing) {
+      playing.gain.gain.setTargetAtTime(0, this.context!.currentTime, .04);
+      playing.source.stop(this.context!.currentTime + .2);
+      this.loops.delete(name);
+    }
+  }
 
   async unlock() {
     if (!this.context) {
@@ -23,6 +59,8 @@ export class SoundEngine {
       for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
     }
     if (this.context.state === "suspended") await this.context.resume();
+    this.loading ??= this.loadClips().catch(error => { this.loading = null; throw error; });
+    await this.loading;
   }
 
   private tone(from: number, to: number, duration: number, level: number, type: OscillatorType = "sine") {
@@ -67,37 +105,29 @@ export class SoundEngine {
   update(frame: Frame, floodSeconds: number, settings: Settings) {
     const blinking = frame.blink < .6;
     const kissing = frame.kiss > .7;
-    const angry = frame.expression.color[1] < .3 && floodSeconds < 0;
+    const angry = frame.fire > .05 && floodSeconds < 0;
     if (this.context?.state === "running") {
       const now = this.context.currentTime;
       this.master!.gain.setTargetAtTime(settings.audio ? settings.volume : 0, now, .025);
+      this.loop("run", settings.audio && frame.run > .25 && floodSeconds < 0, 1.65);
+      this.loop("water", settings.audio && floodSeconds >= 0 && floodSeconds < FLOOD_DURATION);
       if (settings.audio) {
         if (blinking && !this.lastBlink && floodSeconds < FLOOD_DURATION * .85) {
           // A short descending pixel chirp on the lid closure.
           this.tone(1250, 520, .065, .09, "square");
         }
         if (kissing && !this.lastKiss && floodSeconds < 0) {
-          this.hiss(1500, .13, .28);
-          this.tone(680, 180, .16, .55);
+          this.sample("kiss");
         }
         if (angry && !this.lastAngry) {
           this.tone(125, 48, .65, .45, "sawtooth");
           this.tone(92, 38, .8, .22, "triangle");
         }
-        if (frame.run > .25 && floodSeconds < 0 && now >= this.nextStep) {
-          this.tone(125, 40, .08, .32);
-          this.hiss(2400, .08, .08);
-          this.nextStep = now + .11;
-        }
         if (now >= this.nextTexture) {
-          if (floodSeconds >= 0 && floodSeconds < FLOOD_DURATION) {
-            this.hiss(450 + 200*Math.sin(floodSeconds*.8), .55, .55, "lowpass");
-            this.tone(180 + Math.random()*180, 65, .23, .12);
-          } else if (angry) {
+          if (angry && floodSeconds < 0) {
             this.hiss(1200, .38, .22);
             this.hiss(3000, .055, .35);
-          } else if (frame.run > .25) {
-            this.hiss(950, .28, .14);
+
           } else if (frame.scene === 2) {
             this.tone(220 + 50*Math.sin(frame.sceneTime), 330, .4, .07);
           }
