@@ -41,6 +41,16 @@ function boot() {
     surprised: "○",
     playful: "⌁",
   };
+  const animations = [
+    ["Pinball", "Hold two thumbs up", "pinball"],
+    ["Zero gravity", "Hold up two closed fists", "gravity"],
+    ["Rain", "Show two open palms", "rain"],
+    ["Ghost chase", "Make two peace signs", "ghost"],
+    ["Flirt", "Make a heart with both hands", "flirt"],
+    ["Run", "Start voice and say “run”", "lap"],
+    ["Angry fire", "Raise one middle finger", "angry"],
+    ["The Death of Orbi", "Press W to start or stop the flood", "flood"],
+  ] as const;
   const range = (
     label: string,
     key: keyof Settings,
@@ -60,8 +70,11 @@ function boot() {
 <aside class="sidebar"><a class="brand" href="${import.meta.env.BASE_URL}" aria-label="ORBI home"><span class="brand-mark">o<span>••</span></span>ORBI<span class="brand-dot">®</span></a><div class="edition">THE LIVING WISDOME</div><nav><a class="nav-item active" href="#studio"><span>◉</span> Live studio <b>01</b></a><a class="nav-item" href="#calibration"><span>⌖</span> Calibration <b>02</b></a><a class="nav-item" href="#delivery"><span>↗</span> Output & delivery <b>03</b></a></nav><div class="side-bottom"><div class="mini-orbi">••<span>◡</span></div><p>A little gesture.<br>A whole world of feeling.</p><div class="venue">MALMÖ, SWEDEN<br><strong>Wisdome · 11.6 m · 26° tilt</strong></div><span class="version">ORBI STUDIO / V1.0</span></div></aside>
 <main id="studio"><header><div class="breadcrumb">WORKSPACE <span>/</span> LIVE STUDIO</div><div class="session"><i></i> LOCAL SESSION <span id="clock">00:00</span></div></header>
 <section class="title-row"><div><div class="eyebrow">AN INTERACTIVE DOME EXPERIENCE</div><h1>Bring the room to life<span>.</span></h1><p>Your gestures. Their feelings. One very big personality.</p></div><button class="primary" id="open-output">Launch dome output <span>↗</span></button></section>
-<div class="studio-grid"><section class="preview-panel panel"><div class="panel-head"><h2><i class="live-dot"></i> <span id="view-title">In the dome</span> <span class="tag">LIVE SIMULATOR</span></h2><button class="text-button" id="toggle-simulator">View dome master</button><button class="text-button" id="guides">⌖ <span>Show guides</span> <kbd>G</kbd></button></div><div class="preview-stage simulator-view"><iframe id="simulator" src="${import.meta.env.BASE_URL}simulator/?embedded" title="Live Wisdome simulator" allow="fullscreen" loading="eager"></iframe><div class="orbital-ring"></div><canvas id="dome" aria-label="Live fisheye dome-master preview"></canvas><div class="stage-label">160° EQUIDISTANT FISHEYE</div><div class="stage-north">BACK / ZENITH <span>↑</span></div><div class="stage-front">↓ <span>FRONT OF VENUE</span></div></div><div class="preview-footer"><div><i class="live-dot"></i><span id="emotion-label">Neutral</span><span class="muted" id="activity">Feeling at home</span></div><div><span id="fps">— FPS</span><span class="divider">/</span><span id="resolution-label">1024 × 1024</span><button id="snapshot" class="text-button" aria-label="Save dome image">↓ PNG</button></div></div></section>
-<section class="camera-panel panel"><div class="panel-head"><h2>Gesture input</h2><span class="tiny-status" id="input-mode">MANUAL</span></div><div class="camera-view"><video id="camera" playsinline muted></video><canvas id="landmarks"></canvas><div id="camera-empty"><div class="camera-icon">⌁</div><h3>A wave is all it takes.</h3><p>Connect your camera to give<br>ORBI something to react to.</p></div><span class="camera-badge" id="camera-badge">CAMERA OFF</span></div><button id="camera-toggle" class="camera-start">◉ &nbsp; Start camera <span>↗</span></button><div class="telemetry"><div><span>Detected gesture</span><strong id="gesture">No gesture</strong></div><div><span>Confidence</span><strong id="confidence">—</strong></div><div><span>Direction</span><strong id="direction">Centered</strong></div><div><span>Model</span><strong id="model">Not loaded</strong></div><div><span>Inference time</span><strong id="inference-cost">—</strong></div></div><div class="hint"><span>✦</span><p>Point to move directly. Hold other gestures briefly to change emotion.</p></div></section>
+<div class="studio-grid"><section class="preview-panel panel"><div class="panel-head"><h2><i class="live-dot"></i> <span id="view-title">In the dome</span> <span class="tag">LIVE SIMULATOR</span></h2><button class="text-button" id="toggle-simulator">View dome master</button><button class="text-button" id="guides">⌖ <span>Show guides</span> <kbd>G</kbd></button></div><div class="preview-stage simulator-view"><iframe id="simulator" src="${import.meta.env.BASE_URL}simulator/index.html?embedded" title="Live Wisdome simulator" allow="fullscreen" loading="eager"></iframe><div class="orbital-ring"></div><canvas id="dome" aria-label="Live fisheye dome-master preview"></canvas><div class="stage-label">160° EQUIDISTANT FISHEYE</div><div class="stage-north">BACK / ZENITH <span>↑</span></div><div class="stage-front">↓ <span>FRONT OF VENUE</span></div></div><div class="preview-footer"><div><i class="live-dot"></i><span id="emotion-label">Neutral</span><span class="muted" id="activity">Feeling at home</span></div><div><span id="fps">— FPS</span><span class="divider">/</span><span id="resolution-label">1024 × 1024</span><button id="snapshot" class="text-button" aria-label="Save dome image">↓ PNG</button></div></div></section>
+<aside class="sim-side panel" aria-label="Simulator controls"><div class="sim-switch"><button id="index-tab" aria-pressed="true">Animations</button><button id="input-tab" aria-pressed="false">Camera input</button></div>
+<section id="animation-index"><h2>Animation index</h2><p>Select a scene to play it. With the camera on, hold a two-hand gesture briefly.</p>
+${animations.map(([name, cue], i) => `<button class="scene-entry" data-preview="${i}"><span><strong>${name}</strong><small>${cue}</small></span><span aria-hidden="true">▶</span></button>`).join("")}</section>
+<section id="camera-input" class="camera-panel" hidden><div class="panel-head"><h2>Gesture input</h2><span class="tiny-status" id="input-mode">MANUAL</span></div><div class="camera-view"><video id="camera" playsinline muted></video><canvas id="landmarks"></canvas><div id="camera-empty"><div class="camera-icon">⌁</div><h3>A wave is all it takes.</h3><p>Connect your camera to give<br>ORBI something to react to.</p></div><span class="camera-badge" id="camera-badge">CAMERA OFF</span></div><button id="camera-toggle" class="camera-start">◉ &nbsp; Start camera <span>↗</span></button><div class="telemetry"><div><span>Detected gesture</span><strong id="gesture">No gesture</strong></div><div><span>Confidence</span><strong id="confidence">—</strong></div><div><span>Direction</span><strong id="direction">Centered</strong></div><div><span>Model</span><strong id="model">Not loaded</strong></div><div><span>Inference time</span><strong id="inference-cost">—</strong></div></div><div class="hint"><span>✦</span><p>Point to move directly. Hold other gestures briefly to change emotion.</p></div></section></aside>
 <section class="emotion-panel panel"><div class="panel-head"><h2>Set the mood <span class="muted normal">A feeling fills the whole dome.</span></h2><span class="tiny-status">KEYS 1–6</span></div><div class="emotion-buttons">${emotions.map((e, i) => `<button class="emotion-button ${e === "neutral" ? "selected" : ""}" data-emotion="${e}" aria-pressed="${e === "neutral"}"><span class="emotion-face ${e}">${icons[e]}</span><strong>${e[0].toUpperCase() + e.slice(1)}</strong><span class="gesture-name">${["No gesture", "Thumbs up", "Thumbs down", "Middle finger", "Open palm", "Peace sign"][i]}</span><kbd>${i + 1}</kbd></button>`).join("")}</div></section>
 <section class="direction-panel panel"><div class="panel-head"><h2>Follow your lead</h2><span class="tiny-status">ARROW KEYS</span></div><div class="direction-content"><div class="dpad"><button data-dir="up" aria-label="Look up">↑</button><button data-dir="left" aria-label="Look left">←</button><button id="center" aria-label="Return to center">⊙</button><button data-dir="right" aria-label="Look right">→</button><button data-dir="down" aria-label="Look down">↓</button></div><p>Eyes first.<br>Curiosity follows.<small>Space to return home</small></p></div></section></div>
 <section class="lower-grid" id="calibration"><div class="panel controls"><div class="panel-head"><h2>Fine-tune the feeling</h2><button id="reset" class="text-button">↺ Reset character <kbd>R</kbd></button></div><div class="control-grid">${range("Dome brightness", "brightness", 0.15, 1, 0.01)}${range("Animation speed", "speed", 0.5, 1.5, 0.05)}<label class="select-label">Render resolution<select id="resolution"><option value="768">768 × 768 · preview</option><option value="1024" selected>1024 × 1024 · development</option><option value="2048">2048 × 2048 · production</option><option value="2160">2160 × 2160 · HDMI</option></select></label><label class="toggle-label"><span>Procedural sound<small>Optional stereo reactions</small></span><input id="audio" type="checkbox" role="switch"></label></div><details><summary>Face & animation calibration <span>＋</span></summary><div class="control-grid">${range("Home azimuth", "homeAz", -10, 10, 1, "°")}${range("Home elevation", "homeEl", 15, 25, 1, "°")}${range("Eye spacing", "eyeSpacing", 8, 18, 0.5, "°")}${range("Face scale", "faceScale", 0.6, 1.8, 0.02)}${range("Mouth scale", "mouthScale", 0.6, 1.3, 0.05)}${range("Eyebrow offset", "browOffset", -2, 2, 0.25, "°")}${range("Expression transition", "expressionMs", 250, 600, 10, " ms")}${range("Color transition", "colorMs", 600, 1200, 20, " ms")}${range("Return transition", "returnMs", 1000, 1800, 50, " ms")}${range("Directional hold", "holdMs", 500, 3000, 100, " ms")}${range("Anticipation", "anticipationMs", 100, 400, 10, " ms")}${range("Idle timeout", "idleMs", 3000, 15000, 500, " ms")}${range("Master volume", "volume", 0, 0.5, 0.01)}</div></details><details><summary>Gesture & pointing calibration <span>＋</span></summary><p class="calibration-note">Directional control is relative to the camera, not precise 3D pointing. Use a single index finger. In position mode, center your hand and press Calibrate center, then move outside the dead zone.</p><div class="control-grid"><label class="select-label">Pointing method<select id="pointing-method"><option value="orientation">Finger orientation</option><option value="position">Hand position</option></select></label><label class="toggle-label"><span>Mirror camera & directions</span><input id="mirror" type="checkbox" checked></label>${range("Confidence threshold", "confidence", 0.5, 0.95, 0.01)}${range("Stable gesture duration", "stableMs", 300, 500, 10, " ms")}${range("Reaction cooldown", "cooldownMs", 500, 2000, 100, " ms")}${range("Inference rate", "inferenceFps", 10, 30, 1, " FPS")}${range("Position dead zone", "deadZone", 0.08, 0.35, 0.01)}${range("Orientation threshold", "directionThreshold", 0.5, 0.9, 0.05)}<button class="secondary" id="calibrate">Calibrate hand center</button></div></details></div>
@@ -225,7 +238,7 @@ function boot() {
     $("projection-dashboard").onclick = () => setDashboard(!dashboardOpen);
     $("projection-camera").onclick = () => void toggleCamera();
     $("projection-fullscreen").onclick = () => void fullscreenProjection();
-    setDashboard(false);
+    setDashboard(params.has("simulator"));
   }
   function pauseSimulator(paused: boolean) {
     const frame = $<HTMLIFrameElement>("simulator");
@@ -605,6 +618,27 @@ function boot() {
         }),
       );
     });
+    function showIndex(show: boolean) {
+      $("animation-index").hidden = !show;
+      $("camera-input").hidden = show;
+      $("index-tab").setAttribute("aria-pressed", String(show));
+      $("input-tab").setAttribute("aria-pressed", String(!show));
+    }
+    $("index-tab").onclick = () => showIndex(true);
+    $("input-tab").onclick = () => showIndex(false);
+    for (const button of document.querySelectorAll<HTMLButtonElement>(".scene-entry")) {
+      const [, , scene] = animations[Number(button.dataset.preview)];
+      button.onclick = () => {
+        if (scene === "flood") return toggleFlood();
+        if (floodStartedAt !== null) toggleFlood();
+        if (scene === "angry") {
+          dispatch({type: "reset"});
+          dispatch({type: "emotion", value: "angry"});
+        } else {
+          dispatch({type: "routine", value: scene});
+        }
+      };
+    }
     $("flood").onclick = toggleFlood;
     $("open-output").onclick = () => launch("hdmi");
     $("square-output").onclick = () => launch("square");

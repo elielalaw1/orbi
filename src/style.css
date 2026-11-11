@@ -1406,3 +1406,21 @@ footer {
 
 .pip-legend{padding:0 10px 9px;color:#aabb9d;font-size:9px;line-height:1.5}
 .voice-controls{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;max-width:850px}.voice-controls [role=status]{flex-basis:100%;text-align:center;font-size:12px;line-height:1.5;color:#e1e8d8}.voice-controls meter{width:110px;height:18px}
+
+.sim-side { align-self: start; }
+.sim-side [hidden] { display: none; }
+.sim-switch { display: flex; border-bottom: 1px solid var(--line); }
+.sim-switch button { flex: 1; padding: 13px 8px; background: transparent; border: 0; font: inherit; font-size: 12px; }
+.sim-switch button[aria-pressed="true"] { background: #e6eddc; box-shadow: inset 0 -2px #446044; }
+#animation-index { padding: 14px 16px; }
+#animation-index h2 { font-size: 17px; }
+#animation-index p { font-size: 12px; line-height: 1.45; margin: 6px 0 10px; }
+.scene-entry { display: flex; align-items: center; justify-content: space-between; text-align: left; width: 100%; padding: 8px 4px; background: transparent; border: 0; border-top: 1px solid var(--line); color: #263b30; }
+.scene-entry:hover, .scene-entry:focus-visible { background: #edf1e6; }
+.scene-entry strong, .scene-entry small { display: block; }
+.scene-entry strong { font-size: 13px; }
+.scene-entry small { font-size: 11px; margin-top: 2px; }
+@media (max-width: 650px) {
+  .studio-grid > .sim-side { grid-row: 2; }
+  .studio-grid > .emotion-panel, .studio-grid > .direction-panel { grid-row: auto; }
+}
