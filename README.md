@@ -13,7 +13,7 @@ Click **Start voice** and allow microphone access. Camera and voice can run toge
 - **“Run”**: animated lap around the dome.
 - **Two-hand heart** (touch index fingertips above touching thumbs and hold briefly): move to the side, heart eyes, kiss mouth and wink.
 
-In either navigation mode, hold two thumbs up for pinball, two fists for zero gravity, two open palms for rain, or two peace signs for the ghost chase.
+In either navigation mode, hold two fists for zero gravity.
 
 Routines temporarily take control from gestures for eight seconds, then return control. Space/center or reset cancels a routine. Silent pauses keep listening; network and permission errors show a recovery message. Chrome speech recognition may require internet. Real microphone recognition remains dependent on the browser, permissions and speech service.
 

@@ -11,10 +11,7 @@ export interface HandDetection {
   handednessScore: number;
 }
 const pairScenes = new Map<string, GestureScene>([
-  ["Thumb_Up", "pinball"],
   ["Closed_Fist", "gravity"],
-  ["Open_Palm", "rain"],
-  ["Victory", "ghost"],
 ]);
 
 export class HandInputController {

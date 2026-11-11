@@ -3,7 +3,7 @@ import type { GestureScene, Settings } from "../app/types";
 import { EmotionStateMachine, ease } from "./EmotionStateMachine";
 import { SpatialAnimator } from "./SpatialAnimator";
 type Routine = "lap" | "flirt" | GestureScene;
-const sceneIds: Record<GestureScene, number> = { pinball: 1, gravity: 2, rain: 3, ghost: 4 };
+const sceneIds: Record<GestureScene, number> = { gravity: 2 };
 
 export class FaceAnimator {
   emotion = new EmotionStateMachine();
@@ -15,7 +15,7 @@ export class FaceAnimator {
   }
   cancelRoutine(){this.routine=null;}
   routineActive(now:number){return !!this.routine&&now-this.routine.start<8000;}
-  private nextBlink = 2600;
+  private nextBlink = 1200;
   private blinkStart = -1e9;
   private random = 92831;
   private rand() {
@@ -44,8 +44,10 @@ export class FaceAnimator {
     let scene=0, sceneTime=0;
     let run=0;
     let hearts=0,kiss=0,wink=0,bounce=0;
+    let routineTime = 0;
     if(this.routine){
       const t=now-this.routine.start;
+      routineTime = t / 1000;
       if(t>=8000){this.routine=null;this.spatial.center(now,s);}
       else if(this.routine.kind==='lap'){
         const phase=Math.min(1,Math.max(0,(t-600)/6500))*Math.PI*2;
@@ -56,7 +58,12 @@ export class FaceAnimator {
         bounce=(stride-.45)*.095*run;
       }else if(this.routine.kind==='flirt'){
         this.spatial.moveTo(...(this.routine.target ?? roomToMaster(50,20)),now,s);
-        if(t>900){hearts=1;kiss=.7+.3*Math.sin(t*.008);wink=Math.pow(Math.max(0,Math.sin(t*.005)),8);}
+        if(t>900){
+          hearts=ease((t-900)/600);
+          kiss=Math.pow(Math.max(0,Math.sin((t-900)*.005)),4);
+          wink=.85*Math.pow(Math.max(0,Math.sin(t*.003)),6);
+          bounce=.025*Math.sin(t*.004);
+        }
       }else{
         scene=sceneIds[this.routine.kind] ?? 0;
         sceneTime=t/1000;
@@ -65,7 +72,7 @@ export class FaceAnimator {
     this.emotion.tick(now, s);
     if (now > this.nextBlink) {
       this.blinkStart = now;
-      this.nextBlink = now + 2400 + this.rand() * 4300;
+      this.nextBlink = now + 1100 + this.rand() * 2000;
     }
     const t = (now - this.blinkStart) / 160,
       blink = t >= 0 && t < 1 ? 1 - Math.sin(t * Math.PI) : 1;
@@ -77,12 +84,35 @@ export class FaceAnimator {
     const idleY=(glance(glanceIndex-1,2)*(1-glancePhase)+glance(glanceIndex,2)*glancePhase)*.12;
     const calm=1-Math.min(1,Math.max(Math.abs(position.gazeX),Math.abs(position.gazeY)));
     const lookX=position.gazeX*1.1,lookY=position.gazeY*1.1;
+    if (run > 0) {
+      expression.eye = .68 + .12*Math.sin(routineTime*9.);
+      expression.open = .28 + .22*Math.abs(Math.sin(routineTime*7.));
+      expression.smile = .65;
+      expression.brow = .6 + .24*Math.sin(routineTime*9.);
+      expression.tilt = -.25;
+    }
+    if (hearts > 0) {
+      expression.eye = .72 - .20*kiss;
+      expression.brow = .65 + .35*kiss;
+      expression.smile = .9;
+      expression.open = .12;
+      expression.tilt = -.45;
+    }
+    if (scene === 2) {
+      expression.eye = 1.12 + .12*Math.sin(sceneTime*2.);
+      expression.open = .4 + .15*Math.sin(sceneTime*3.);
+      expression.brow = 1.2;
+      expression.smile = .3;
+    }
+    const heat = ease((.5-expression.color[1])/.35);
+    expression.open += heat*.14*Math.max(0,Math.sin(now*.011));
+    expression.tilt += heat*.22*Math.sin(now*.007);
     expression.eye*=1+.025*Math.sin(now*.0011);
     expression.brow+=.10*Math.sin(now*.0013)+.05*Math.sin(now*.0021);
     expression.wink*=Math.pow(Math.max(0,Math.sin(now*.0018)),10);
     expression.wink=Math.max(expression.wink,wink);
     return {
-      scene,sceneTime,hearts,kiss,run,seconds:now/1000,
+      scene,sceneTime,hearts,kiss,run,routineTime,seconds:now/1000,
       expression,
       position,
       blink,

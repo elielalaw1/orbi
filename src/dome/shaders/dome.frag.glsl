@@ -137,22 +137,6 @@ vec3 gestureStage(vec3 ray,float scene,float t){
  vec2 sky=ray.xy/max(.00001,length(ray.xy))*radius;
  vec3 night=vec3(.045,.055,.16),mint=vec3(.26,.97,.84),pink=vec3(1.,.29,.55);
  vec3 cream=vec3(1.,.94,.65);
- if(scene==1.){
-   // Four bumpers around the crown. The ball takes a bowed chord from one to the next.
-   float hop=t*1.55,k=floor(hop),u=fract(hop);
-   vec2 a=vec2(cos(k*PI*.5),sin(k*PI*.5))*.62;
-   vec2 b=vec2(-a.y,a.x);
-   vec2 ball=mix(a,b,u)*(1.-.65*sin(PI*u));
-   vec2 prev=mix(a,b,max(0.,u-.16))*(1.-.65*sin(PI*max(0.,u-.16)));
-   vec3 c=mix(night,vec3(.21,.10,.36),step(.5,fract(radius*12.))*.34);
-   if(abs(radius-.92)<.021)c=fract(az*12./PI-t)>.45?pink:mint;
-   vec2 hub=abs(sky);float d=length(vec2(max(hub.x,hub.y)-.62,min(hub.x,hub.y)));
-   if(d<.105)c=d<.06?pink:cream;
-   if(abs(length(sky-a)-(.09+.21*u))<.014 && u<.63)c=mint;
-   if(stroke(sky,prev,ball,.026)>.5)c=pink;
-   if(length(sky-ball)<.049)c=cream;
-   return c;
- }
  if(scene==2.){
    vec3 c=night+vec3(.06,.025,.12)*(1.-min(radius,1.));
    vec2 stars=fract(sky*15.+.23)-.5;
@@ -168,35 +152,9 @@ vec3 gestureStage(vec3 ray,float scene,float t){
  }
  // Cylindrical lanes repeat at whole turns so the join behind the audience is invisible.
  float turn=az/(2.*PI)+.5;
- if(scene==3.){
-   vec3 c=mix(vec3(.07,.13,.28),vec3(.21,.28,.48),smoothstep(.15,1.5,el));
-   float lane=floor(turn*32.);
-   float v=fract(t*1.45+.47*sin(lane*13.));
-   float x=(fract(turn*32.)-.5);
-   float h=mix(1.19,.04,v);
-   if(el<1.2 && abs(x-(el-h)*1.7)<.105 && abs(el-h)<.07)c=mint;
-   float splash=max(0.,(v-.78)/.22);
-   if(splash>0. && abs(abs(x)-splash*.46)<.08 && abs(el-.04-.065*sin(splash*PI))<.02)c=cream;
-   float cloud=1.10+.07*cos(az*12.+t*.5)+.045*cos(az*7.-t*.3);
-   if(el>cloud)c=mix(vec3(.34,.39,.57),vec3(.65,.73,.83),smoothstep(cloud,cloud+.18,el));
-   return c;
- }
- // Three ghosts chase pellets around a scalloped arcade track.
- float track=.64+.10*cos(az*3.);
- vec3 c=night;
- if(abs(abs(radius-track)-.18)<.017)c=vec3(.25,.30,.75);
- float chase=turn*3.-t*.40;
- float dx=(fract(chase+.5)-.5)*2.09*track;
- vec2 g=vec2(dx,track-radius+.022*sin(t*8.));
- if(abs(radius-track)<.023 && abs(fract(turn*39.)-.5)<.13 && fract(chase)>.12)c=cream;
- if(length(vec2(g.x,max(g.y,0.)))<.115 && g.y>-.085+.023*cos(g.x*83.+floor(t*8.))){
-   c=mix(mint,pink,.5+.5*cos(floor(chase+.5)*2.*PI/3.));
-   vec2 eye=vec2(abs(g.x)-.045,g.y-.032);
-   if(length(eye)<.025)c=cream;
-   if(length(vec2(abs(g.x-.009)-.045,eye.y))<.012)c=night;
- }
- return c;
+ return night;
 }
+
 void main(){
  vec2 p=gl_FragCoord.xy/uRes*2.-1.;if(length(p)>1.){frag=vec4(0,0,0,1);return;}
  vec3 rd=roomDir(p);float a=radians(uFace.x),e=radians(uFace.y);
@@ -311,6 +269,24 @@ void main(){
  }
 
  if(f>0. && uRoutine.z>.01){
+   float stride=floor(uRoutine.w*24.)*.9;
+   // Pumping arms, flying sweat and broken wind streaks follow the face.
+   for(int sideIndex=0;sideIndex<2;sideIndex++){
+     float side=sideIndex==0?-1.:1.;
+     vec2 shoulder=vec2(side*23.,-9.);
+     vec2 elbow=shoulder+vec2(side*(5.+2.*cos(stride)), -5.+5.*sin(stride+side*PI*.5));
+     vec2 fist=elbow+vec2(-side*5.,6.);
+     float arm=max(stroke(q,shoulder,elbow,1.5),stroke(q,elbow,fist,1.5));
+     col=mix(col,ink,arm*uRoutine.z);
+     if(length(q-fist)<2.5)col=mix(col,vec3(1.,.88,.43),uRoutine.z);
+     vec2 sweat=q-vec2(side*25.,10.-mod(uRoutine.w*22.+side*9.,23.));
+     if(abs(sweat.x)<1.2 && abs(sweat.y)<2.)col=mix(col,vec3(.24,.8,1.),uRoutine.z);
+   }
+   if(abs(q.x)>26. && abs(q.x)<41. && abs(q.y)<22.){
+     float wind=step(.78,fract(q.y*.15))*step(.3,fract(q.x*.07+uRoutine.w*3.));
+     col=mix(col,vec3(1.,.95,.67),wind*uRoutine.z);
+   }
+
    // Opposing thigh and shin angles keep both feet legible at a sprint.
    for(int leg=0;leg<2;leg++){
      float side=leg==0?-1.:1.;
@@ -326,6 +302,14 @@ void main(){
      vec4 jet=arcadeFlame(vec2(exhaust.y/5.,(4.-exhaust.x)/12.),cycle);
      col=mix(col,jet.rgb,jet.a*uRoutine.z);
    }
+ }
+ if(f>0. && uRoutine.x>0.){
+   vec2 blush=vec2(abs(q.x)-21.,q.y+4.);
+   if(abs(blush.x)<3.5 && abs(blush.y)<1.8)col=mix(col,vec3(1.,.27,.32),uRoutine.x*.7);
+ }
+ if(f>0. && heat>.1){
+   float crease=max(stroke(q,vec2(-2.,13.),vec2(0.,11.),.6),stroke(q,vec2(2.,13.),vec2(0.,11.),.6));
+   col=mix(col,ink,crease*heat);
  }
  if(f>0. && uRoutine.y>0.){
    float kiss=uRoutine.y;

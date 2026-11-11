@@ -48,7 +48,16 @@ export function floodFrame(frame: Frame, seconds: number): Frame {
   return {
     ...frame,
     position: { ...frame.position, az, el, masterX, masterY, roll: 0, lean: panic * 0.08 * Math.sin(seconds * 1.8) },
-    expression,
+    expression: {
+      ...expression,
+      eye: expression.eye + panic * .12 * Math.sin(seconds * 4.3),
+      open: expression.open + panic * .28 * Math.max(0, Math.sin(seconds * 2.6)),
+      brow: expression.brow + panic * .3 * Math.sin(seconds * 2.1),
+      tilt: expression.tilt + panic * .18 * Math.sin(seconds * 1.7),
+    },
+    run: 0,
+    scene: 0,
+    sceneTime: 0,
     hearts: 0,
     kiss: 0,
     gazeX: seconds < 21 ? Math.sin(seconds * 0.4) * 0.65 : Math.sign(endAz - startAz) * panic * 0.75,

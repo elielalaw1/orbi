@@ -59,7 +59,7 @@ export const defaults: Settings = {
   speed: 1,
   resolution: 768,
   guides: false,
-  audio: false,
+  audio: true,
   volume: 0.18,
   homeAz: 0,
   homeEl: 20,
@@ -87,7 +87,7 @@ export const defaults: Settings = {
   deadZone: 0.15,
   directionThreshold: 0.55,
 };
-export type GestureScene = 'pinball' | 'gravity' | 'rain' | 'ghost';
+export type GestureScene = 'gravity';
 export type Action =
   | { type: "routine"; value: "lap" | "flirt" | GestureScene }
   | { type: "emotion"; value: Emotion }

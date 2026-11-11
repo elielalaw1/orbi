@@ -131,7 +131,7 @@ it("requires both fingertip joins and fires once per held heart in either contro
 
 it("routes each held pair directly into its animated scene in both modes", () => {
   for (const navigationMode of ["gestures", "position"] as const) {
-    for (const [pose, id] of Object.entries({Thumb_Up:1, Closed_Fist:2, Open_Palm:3, Victory:4, Thumb_Down:0})) {
+    for (const [pose, id] of Object.entries({Thumb_Up:0, Closed_Fist:2, Open_Palm:0, Victory:0, Thumb_Down:0})) {
       const controller = new HandInputController();
       const store = new StateStore();
       store.settings.navigationMode = navigationMode;
@@ -152,14 +152,14 @@ it("routes each held pair directly into its animated scene in both modes", () =>
 
 it("accepts moderate-confidence pairs and survives a short classification dropout", () => {
  const controller = new HandInputController();
- const hands = [detection("Left", "Victory"), detection("Right", "Victory")];
+ const hands = [detection("Left", "Closed_Fist"), detection("Right", "Closed_Fist")];
  hands.forEach(h => h.score = .56);
  const s = {...defaults, navigationMode: "gestures" as const};
  expect(controller.update(hands, 0, s).actions).toEqual([]);
  controller.update(hands, 250, s);
- expect(controller.update([], 300, s).actions).not.toContainEqual({type:"routine",value:"ghost"});
+ expect(controller.update([], 300, s).actions).not.toContainEqual({type:"routine",value:"gravity"});
  controller.update(hands, 350, s);
  controller.update([], 420, s);
- expect(controller.update(hands, 500, s).actions).toEqual([{type:"routine",value:"ghost"}]);
+ expect(controller.update(hands, 500, s).actions).toEqual([{type:"routine",value:"gravity"}]);
  expect(controller.update(hands, 600, s).actions).toEqual([]);
 });
