@@ -50,15 +50,15 @@ export class HandInputController {
     let positionLabel = "";
     let label =
         controlIndex >= 0
-          ? "Vänster hand synlig"
-          : "Ingen vänster hand · åter till sweet spot",
+          ? "Left hand visible"
+          : "No left hand · returning home",
       score = 0;
     if (controlIndex >= 0) {
       const h = hands[controlIndex];
       if (s.fullDome && s.pointingMethod === "position") {
         const target = this.position.target(h.landmarks, s);
         if (target) actions.push({ type: "target", value: target });
-        label = "Vänster hand · positionsstyrning";
+        label = "Left hand · position control";
         score = h.handednessScore;
       } else {
         const result = this.left.process(
@@ -69,7 +69,7 @@ export class HandInputController {
           s,
         );
         if (result.action) actions.push(result.action);
-        label = result.label || "Vänster hand synlig";
+        label = result.label || "Left hand visible";
         score = result.score;
       }
     }
@@ -92,7 +92,7 @@ export class HandInputController {
   private updateCommands(hands: HandDetection[], now: number, s: Settings) {
     const valid = hands.filter(h => h.landmarks.length === 21 && h.handednessScore >= 0.55);
     const actions: Action[] = [];
-    let positionLabel = "Ingen hand · åter till sweet spot";
+    let positionLabel = "No hand · returning home";
     let controlIndex = -1;
     if (!valid.length) {
       if (this.hadLeft || !this.initialized) actions.push({ type: "hand-lost" });
@@ -103,7 +103,7 @@ export class HandInputController {
       if (navigation.selected === "home") {
         if (!this.hadLeft || navigation.command === "home") actions.push({ type: "hand-lost" });
       } else actions.push({ type: "target", value: navigation.target });
-      positionLabel = `${navigation.label} · peka för att välja mål`;
+      positionLabel = `${navigation.label} · point to choose a destination`;
       controlIndex = hands.findIndex(h => valid.includes(h) && !!indexDirection(h.landmarks, s.mirrored));
       if (controlIndex < 0) controlIndex = hands.indexOf(valid[0]);
       // Navigation poses take priority over emotions, including the two-hand up command.

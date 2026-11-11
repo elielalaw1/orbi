@@ -56,11 +56,11 @@ function boot() {
     if (square) document.body.classList.add("square");
   } else
     app.innerHTML = `
-<aside class="sidebar"><a class="brand" href="/" aria-label="ORBI home"><span class="brand-mark">o<span>••</span></span>ORBI<span class="brand-dot">®</span></a><div class="edition">THE LIVING WISDOME</div><nav><a class="nav-item active" href="#studio"><span>◉</span> Live studio <b>01</b></a><a class="nav-item" href="#calibration"><span>⌖</span> Calibration <b>02</b></a><a class="nav-item" href="#delivery"><span>↗</span> Output & delivery <b>03</b></a></nav><div class="side-bottom"><div class="mini-orbi">••<span>◡</span></div><p>A little gesture.<br>A whole world of feeling.</p><div class="venue">MALMÖ, SWEDEN<br><strong>Wisdome · 11.6 m · 26° tilt</strong></div><span class="version">ORBI STUDIO / V1.0</span></div></aside>
+<aside class="sidebar"><a class="brand" href="${import.meta.env.BASE_URL}" aria-label="ORBI home"><span class="brand-mark">o<span>••</span></span>ORBI<span class="brand-dot">®</span></a><div class="edition">THE LIVING WISDOME</div><nav><a class="nav-item active" href="#studio"><span>◉</span> Live studio <b>01</b></a><a class="nav-item" href="#calibration"><span>⌖</span> Calibration <b>02</b></a><a class="nav-item" href="#delivery"><span>↗</span> Output & delivery <b>03</b></a></nav><div class="side-bottom"><div class="mini-orbi">••<span>◡</span></div><p>A little gesture.<br>A whole world of feeling.</p><div class="venue">MALMÖ, SWEDEN<br><strong>Wisdome · 11.6 m · 26° tilt</strong></div><span class="version">ORBI STUDIO / V1.0</span></div></aside>
 <main id="studio"><header><div class="breadcrumb">WORKSPACE <span>/</span> LIVE STUDIO</div><div class="session"><i></i> LOCAL SESSION <span id="clock">00:00</span></div></header>
 <section class="title-row"><div><div class="eyebrow">AN INTERACTIVE DOME EXPERIENCE</div><h1>Bring the room to life<span>.</span></h1><p>Your gestures. Their feelings. One very big personality.</p></div><button class="primary" id="open-output">Launch dome output <span>↗</span></button></section>
 <div class="studio-grid"><section class="preview-panel panel"><div class="panel-head"><h2><i class="live-dot"></i> <span id="view-title">In the dome</span> <span class="tag">LIVE SIMULATOR</span></h2><button class="text-button" id="toggle-simulator">View dome master</button><button class="text-button" id="guides">⌖ <span>Show guides</span> <kbd>G</kbd></button></div><div class="preview-stage simulator-view"><iframe id="simulator" src="${import.meta.env.BASE_URL}simulator/?embedded" title="Live Wisdome simulator" allow="fullscreen" loading="eager"></iframe><div class="orbital-ring"></div><canvas id="dome" aria-label="Live fisheye dome-master preview"></canvas><div class="stage-label">160° EQUIDISTANT FISHEYE</div><div class="stage-north">BACK / ZENITH <span>↑</span></div><div class="stage-front">↓ <span>FRONT OF VENUE</span></div></div><div class="preview-footer"><div><i class="live-dot"></i><span id="emotion-label">Neutral</span><span class="muted" id="activity">Feeling at home</span></div><div><span id="fps">— FPS</span><span class="divider">/</span><span id="resolution-label">1024 × 1024</span><button id="snapshot" class="text-button" aria-label="Save dome image">↓ PNG</button></div></div></section>
-<section class="camera-panel panel"><div class="panel-head"><h2>Gesture input</h2><span class="tiny-status" id="input-mode">MANUAL</span></div><div class="camera-view"><video id="camera" playsinline muted></video><canvas id="landmarks"></canvas><div id="camera-empty"><div class="camera-icon">⌁</div><h3>A wave is all it takes.</h3><p>Connect your camera to give<br>ORBI something to react to.</p></div><span class="camera-badge" id="camera-badge">CAMERA OFF</span></div><button id="camera-toggle" class="camera-start">◉ &nbsp; Start camera <span>↗</span></button><div class="telemetry"><div><span>Detected gesture</span><strong id="gesture">No gesture</strong></div><div><span>Confidence</span><strong id="confidence">—</strong></div><div><span>Direction</span><strong id="direction">Centered</strong></div><div><span>Model</span><strong id="model">Not loaded</strong></div><div><span>Inferens (CPU)</span><strong id="inference-cost">—</strong></div></div><div class="hint"><span>✦</span><p>Peka för att följa direkt. Håll andra gester kort för att ändra känsla.</p></div></section>
+<section class="camera-panel panel"><div class="panel-head"><h2>Gesture input</h2><span class="tiny-status" id="input-mode">MANUAL</span></div><div class="camera-view"><video id="camera" playsinline muted></video><canvas id="landmarks"></canvas><div id="camera-empty"><div class="camera-icon">⌁</div><h3>A wave is all it takes.</h3><p>Connect your camera to give<br>ORBI something to react to.</p></div><span class="camera-badge" id="camera-badge">CAMERA OFF</span></div><button id="camera-toggle" class="camera-start">◉ &nbsp; Start camera <span>↗</span></button><div class="telemetry"><div><span>Detected gesture</span><strong id="gesture">No gesture</strong></div><div><span>Confidence</span><strong id="confidence">—</strong></div><div><span>Direction</span><strong id="direction">Centered</strong></div><div><span>Model</span><strong id="model">Not loaded</strong></div><div><span>Inference time</span><strong id="inference-cost">—</strong></div></div><div class="hint"><span>✦</span><p>Point to move directly. Hold other gestures briefly to change emotion.</p></div></section>
 <section class="emotion-panel panel"><div class="panel-head"><h2>Set the mood <span class="muted normal">A feeling fills the whole dome.</span></h2><span class="tiny-status">KEYS 1–6</span></div><div class="emotion-buttons">${emotions.map((e, i) => `<button class="emotion-button ${e === "neutral" ? "selected" : ""}" data-emotion="${e}" aria-pressed="${e === "neutral"}"><span class="emotion-face ${e}">${icons[e]}</span><strong>${e[0].toUpperCase() + e.slice(1)}</strong><span class="gesture-name">${["No gesture", "Thumbs up", "Thumbs down", "Middle finger", "Open palm", "Peace sign"][i]}</span><kbd>${i + 1}</kbd></button>`).join("")}</div></section>
 <section class="direction-panel panel"><div class="panel-head"><h2>Follow your lead</h2><span class="tiny-status">ARROW KEYS</span></div><div class="direction-content"><div class="dpad"><button data-dir="up" aria-label="Look up">↑</button><button data-dir="left" aria-label="Look left">←</button><button id="center" aria-label="Return to center">⊙</button><button data-dir="right" aria-label="Look right">→</button><button data-dir="down" aria-label="Look down">↓</button></div><p>Eyes first.<br>Curiosity follows.<small>Space to return home</small></p></div></section></div>
 <section class="lower-grid" id="calibration"><div class="panel controls"><div class="panel-head"><h2>Fine-tune the feeling</h2><button id="reset" class="text-button">↺ Reset character <kbd>R</kbd></button></div><div class="control-grid">${range("Dome brightness", "brightness", 0.15, 1, 0.01)}${range("Animation speed", "speed", 0.5, 1.5, 0.05)}<label class="select-label">Render resolution<select id="resolution"><option value="768">768 × 768 · preview</option><option value="1024" selected>1024 × 1024 · development</option><option value="2048">2048 × 2048 · production</option><option value="2160">2160 × 2160 · HDMI</option></select></label><label class="toggle-label"><span>Procedural sound<small>Optional stereo reactions</small></span><input id="audio" type="checkbox" role="switch"></label></div><details><summary>Face & animation calibration <span>＋</span></summary><div class="control-grid">${range("Home azimuth", "homeAz", -10, 10, 1, "°")}${range("Home elevation", "homeEl", 15, 25, 1, "°")}${range("Eye spacing", "eyeSpacing", 8, 18, 0.5, "°")}${range("Face scale", "faceScale", 0.6, 1.8, 0.02)}${range("Mouth scale", "mouthScale", 0.6, 1.3, 0.05)}${range("Eyebrow offset", "browOffset", -2, 2, 0.25, "°")}${range("Expression transition", "expressionMs", 250, 600, 10, " ms")}${range("Color transition", "colorMs", 600, 1200, 20, " ms")}${range("Return transition", "returnMs", 1000, 1800, 50, " ms")}${range("Directional hold", "holdMs", 500, 3000, 100, " ms")}${range("Anticipation", "anticipationMs", 100, 400, 10, " ms")}${range("Idle timeout", "idleMs", 3000, 15000, 500, " ms")}${range("Master volume", "volume", 0, 0.5, 0.01)}</div></details><details><summary>Gesture & pointing calibration <span>＋</span></summary><p class="calibration-note">Directional control is relative to the camera, not precise 3D pointing. Use a single index finger. In position mode, center your hand and press Calibrate center, then move outside the dead zone.</p><div class="control-grid"><label class="select-label">Pointing method<select id="pointing-method"><option value="orientation">Finger orientation</option><option value="position">Hand position</option></select></label><label class="toggle-label"><span>Mirror camera & directions</span><input id="mirror" type="checkbox" checked></label>${range("Confidence threshold", "confidence", 0.5, 0.95, 0.01)}${range("Stable gesture duration", "stableMs", 300, 500, 10, " ms")}${range("Reaction cooldown", "cooldownMs", 500, 2000, 100, " ms")}${range("Inference rate", "inferenceFps", 10, 30, 1, " FPS")}${range("Position dead zone", "deadZone", 0.08, 0.35, 0.01)}${range("Orientation threshold", "directionThreshold", 0.5, 0.9, 0.05)}<button class="secondary" id="calibrate">Calibrate hand center</button></div></details></div>
@@ -72,18 +72,18 @@ function boot() {
   if (!output) {
     const stage = document.createElement("section");
     stage.id = "projection-stage";
-    stage.setAttribute("aria-label", "Ren domprojektion");
+    stage.setAttribute("aria-label", "Clean dome projection");
     app.prepend(stage);
     const toolbar = document.createElement("div");
     toolbar.className = "projection-toolbar";
     toolbar.innerHTML =
-      '<button id="projection-camera">Starta kamera · C</button><button id="projection-fullscreen">Helskärm · F</button><button id="projection-dashboard" aria-expanded="false">Kontroller · D</button><button id="projection-preview">Kameraruta · V</button><span>Peka ← →: sidor · båda pekfingrarna ↑: upp · peka ↓: fram · peace: bak · knuten hand: mitten. Q/E roterar ansiktet. 0 nollställer rotationen. D visar kontrollerna.</span>';
+      '<button id="projection-camera">Start camera · C</button><button id="projection-fullscreen">Fullscreen · F</button><button id="projection-dashboard" aria-expanded="false">Controls · D</button><button id="projection-preview">Camera preview · V</button><span>Point ← →: sides · both index fingers ↑: up · point ↓: front · peace: back · fist: home. Q/E rotates the face. 0 resets rotation. D opens controls.</span>';
     document.body.append(toolbar);
     const pip = document.createElement("aside");
     pip.id = "hand-preview";
     pip.hidden = true;
     pip.innerHTML =
-      '<div class="pip-header"><strong>Din kamera</strong><button id="pip-hide" aria-label="Dölj kamerarutan">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Peka för att välja mål</div><div class="pip-legend">Peka ← →: sidor · båda pekfingrarna ↑: upp<br>Peka ↓: fram · Peace: bak · Knuten hand: sweet spot</div>';
+      '<div class="pip-header"><strong>Your camera</strong><button id="pip-hide" aria-label="Hide camera preview">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Point to choose a destination</div><div class="pip-legend">Point ← →: sides · both index fingers ↑: up<br>Point ↓: front · Peace: back · Fist: home</div>';
     document.body.append(pip);
     $("pip-hide").onclick = () => {
       previewWanted = false;
@@ -93,16 +93,16 @@ function boot() {
       previewWanted = !previewWanted;
       updatePreviewVisibility();
     };
-    document.querySelector("h1")!.textContent = "ORBI · kontroller";
+    document.querySelector("h1")!.textContent = "ORBI · controls";
     document.querySelector(".title-row p")!.textContent =
-      "Vänsterhandens gester väljer målen från testfilmen. Högerhanden ändrar känsla.";
+      "Pointing gestures choose a destination. Other gestures change emotion.";
     const orientation = document.createElement("div");
     orientation.className = "orientation-controls";
     orientation.innerHTML =
-      "<h3>Räta upp ansiktet</h3>" +
-      range("Ansiktsrotation · Q/E", "rotation", -180, 180, 1, "°") +
-      '<div class="orientation-presets"><button type="button" data-roll="-90">−90°</button><button type="button" data-roll="0">0°</button><button type="button" data-roll="90">+90°</button><button type="button" data-roll="180">180°</button></div><label class="toggle-label"><span>Automatiskt rättvänt<small>Följer rummets upp-riktning, även bakom publiken</small></span><input id="auto-upright" type="checkbox" checked></label>' +
-      range("Upprätningshastighet", "orientationSpeed", 90, 720, 30, "°/s");
+      "<h3>Face orientation</h3>" +
+      range("Face rotation · Q/E", "rotation", -180, 180, 1, "°") +
+      '<div class="orientation-presets"><button type="button" data-roll="-90">−90°</button><button type="button" data-roll="0">0°</button><button type="button" data-roll="90">+90°</button><button type="button" data-roll="180">180°</button></div><label class="toggle-label"><span>Keep face upright<small>Keeps the face upright, including behind the audience</small></span><input id="auto-upright" type="checkbox" checked></label>' +
+      range("Upright adjustment speed", "orientationSpeed", 90, 720, 30, "°/s");
     document.querySelector(".control-grid")!.prepend(orientation);
     orientation
       .querySelectorAll<HTMLButtonElement>("[data-roll]")
@@ -119,30 +119,30 @@ function boot() {
     const handCalibration = document.createElement("button");
     handCalibration.id = "calibrate-left-hand";
     handCalibration.className = "secondary";
-    handCalibration.textContent = "Kalibrera: det här är min vänstra hand";
+    handCalibration.textContent = "Calibrate: this is my left hand";
     document.querySelector(".control-grid")!.append(handCalibration);
     handCalibration.onclick = () => {
       if (
         lastDetections.length !== 1 ||
         lastDetections[0].handednessScore < 0.7
       ) {
-        toast("Visa bara din vänstra hand tydligt och tryck igen.");
+        toast("Show only your left hand clearly and try again.");
         return;
       }
       const label = lastDetections[0].handedness;
       if (label !== "Left" && label !== "Right") return;
       dispatch({ type: "settings", value: { leftHandLabel: label } });
       gestures.clear();
-      toast("Vänster hand kalibrerad. Den handen ska nu markeras grönt.");
+      toast("Left hand calibrated. It should now be highlighted in green.");
     };
     const scope = document.createElement("label");
     scope.className = "toggle-label full-dome-setting";
     scope.innerHTML =
-      "<span>Hela domytan är aktiv<small>Peka åt sidan med valfri hand. Båda pekfingrarna upp: upp. Peka ned: fram. Peace: bak. Knuten hand: sweet spot.</small></span>";
+      "<span>Full dome enabled<small>Point sideways with either hand. Both index fingers up: overhead. Point down: front. Peace: back. Fist: home.</small></span>";
     document.querySelector(".control-grid")!.prepend(scope);
     const speed = document.createElement("div");
     speed.innerHTML = range(
-      "Förflyttning (grader/sekund)",
+      "Movement (degrees/second)",
       "angularSpeed",
       20,
       240,
@@ -152,7 +152,7 @@ function boot() {
     const navigationMode = document.createElement("label");
     navigationMode.className = "select-label";
     navigationMode.innerHTML =
-      'Positionsstyrning<select id="navigation-mode"><option value="gestures">Pekkommandon · fasta mål från filmen</option><option value="position">Dra med handens läge · tidigare läge</option></select>';
+      'Position control<select id="navigation-mode"><option value="gestures">Pointing gestures · fixed destinations</option><option value="position">Drag using hand position</option></select>';
     document.querySelector(".control-grid")!.append(navigationMode);
     $("navigation-mode").onchange = () => {
       gestures.clear();
@@ -166,11 +166,11 @@ function boot() {
       dispatch({ type: "hand-lost" });
     };
     const reach = document.createElement("div");
-    reach.innerHTML = range("Handens räckvidd", "handReach", 1, 5, 0.1);
+    reach.innerHTML = range("Hand reach", "handReach", 1, 5, 0.1);
     document.querySelector(".control-grid")!.append(reach.firstElementChild!);
     const sweep = document.createElement("button");
     sweep.className = "secondary";
-    sweep.textContent = "Testa hela domen (pausar kameran)";
+    sweep.textContent = "Test the full dome (pauses camera)";
     document.querySelector(".control-grid")!.append(sweep);
     sweep.onclick = () => {
       sweepTimers.forEach(clearTimeout);
@@ -191,7 +191,7 @@ function boot() {
     };
     const response = document.createElement("div");
     response.innerHTML = range(
-      "Pekrespons (ms)",
+      "Pointing response (ms)",
       "pointResponseMs",
       16,
       200,
@@ -202,7 +202,7 @@ function boot() {
       .append(response.firstElementChild!);
     ($("pointing-method") as HTMLSelectElement).value = "position";
     document.querySelector(".calibration-note")!.textContent =
-      "Standardläget använder pekkommandon med fasta mål: ett pekfinger åt höger/vänster väljer sida, båda händernas pekfingrar uppåt väljer upp och ett pekfinger nedåt väljer fram. Peace väljer bak och knuten hand väljer sweet spot. Håll riktningen kort för att välja. Valfri hand kan styra; när inga händer syns återgår Orbi till sweet spot. I det alternativa läget Dra med handens läge gäller: mitten är domens zenit, nederkanten är salens framsida och överkanten baksidan. Det är kamerastyrning, inte exakt fysisk 3D-pekning. Hela den projicerbara ytan är tillgänglig; ansiktet blir mindre nära kanten.";
+      "Point left or right to choose a side, raise both index fingers to go overhead, or point down to go to the front. Peace selects the back; a fist returns home. Hold the direction briefly. Either hand can control Orbi. When no hands are visible, Orbi returns home. In hand-position mode, the camera centre maps to the zenith, the bottom to the front and the top to the back. This is camera control, not precise physical 3D pointing. The face becomes smaller near the projection edge.";
     ($("resolution") as HTMLSelectElement).value = String(
       store.settings.resolution,
     );
@@ -245,8 +245,8 @@ function boot() {
           document.querySelector(".projection-toolbar")?.classList.add("idle");
       }, 4500);
     $("projection-dashboard").textContent = show
-      ? "Dölj kontroller · D"
-      : "Kontroller · D";
+      ? "Hide controls · D"
+      : "Controls · D";
     $("projection-dashboard").setAttribute("aria-expanded", String(show));
     pauseSimulator(!show || !previewDock.classList.contains("simulator-view"));
   }
@@ -256,7 +256,7 @@ function boot() {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
     } catch {
-      toast("Öppna sidan i Chrome eller Safari och välj helskärm.");
+      toast("Open this page in Chrome or Safari and choose fullscreen.");
     }
   }
 
@@ -306,8 +306,8 @@ function boot() {
     publish();
     if (a.type === "emotion") sound.play(a.value, store.settings);
     if (a.type === "target") {
-      $("direction").textContent = "Hela domen";
-      $("activity").textContent = "Följer handen";
+      $("direction").textContent = "Full dome";
+      $("activity").textContent = "Following hand";
     }
     if (a.type === "direction") {
       sound.play("move", store.settings);
@@ -369,7 +369,7 @@ function boot() {
     $("camera-toggle").textContent = "◉ Start camera";
     $("camera-badge").textContent = "CAMERA OFF";
     $("input-mode").textContent = "MANUAL";
-    $("projection-camera").textContent = "Starta kamera · C";
+    $("projection-camera").textContent = "Start camera · C";
     $("gesture").textContent = "No gesture";
     $("confidence").textContent = "—";
     const overlay = $<HTMLCanvasElement>("landmarks");
@@ -407,7 +407,7 @@ function boot() {
         .play()
         .catch(() =>
           toast(
-            "Kamerarutan kunde inte spelas upp. Geststyrningen fortsätter.",
+            "Camera preview could not play. Gesture control continues.",
           ),
         );
       updatePreviewVisibility();
@@ -427,8 +427,8 @@ function boot() {
       cameraBusy = false;
       button.disabled = false;
       $("projection-camera").textContent = cameraRunning
-        ? "Stoppa kamera · C"
-        : "Starta kamera · C";
+        ? "Stop camera · C"
+        : "Start camera · C";
     }
   }
   const connections = [
@@ -449,7 +449,7 @@ function boot() {
         gestures.clear();
         staleReturned = true;
         lastDetections = [];
-        $("pip-status").textContent = "Ingen kamerasignal · sweet spot";
+        $("pip-status").textContent = "No camera signal · home";
       }
       return;
     }
@@ -484,14 +484,14 @@ function boot() {
       for (const action of routed.actions) dispatch(action);
       $("gesture").textContent = routed.label
         .replaceAll("_", " ")
-        .replace("point:", "Pekar ");
+        .replace("point:", "Pointing ");
       $("confidence").textContent = lastDetections.length
         ? `${Math.round(routed.score * 100)}%`
         : "—";
       $("pip-status").textContent =
         routed.controlIndex >= 0
           ? routed.positionLabel
-          : "Ingen vänster hand · åter till sweet spot";
+          : "No left hand · returning home";
       if (!dashboardOpen && $("hand-preview").hidden) return;
       const overlay = $<HTMLCanvasElement>("landmarks");
       if (overlay.width !== 640 || overlay.height !== 480) {

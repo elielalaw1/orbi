@@ -62,8 +62,8 @@ it("either hand can control, and losing one of two hands retains the goal",()=>{
  const pair=[pointing(),pointing(0,"Right")];
  input.update(pair,300,defaults);
  const up=input.update(pair,460,defaults);
- expect(up.positionLabel).toContain("Upp");
- expect(input.update([pair[1]],500,defaults).positionLabel).toContain("Upp");
+ expect(up.positionLabel).toContain("Up");
+ expect(input.update([pair[1]],500,defaults).positionLabel).toContain("Up");
  expect(input.update([],600,defaults).actions).toEqual([{type:"hand-lost"}]);
  expect(input.update([pointing()],700,defaults).actions).toEqual([{type:"hand-lost"}]);
 });

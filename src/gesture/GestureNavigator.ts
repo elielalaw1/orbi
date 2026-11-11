@@ -14,11 +14,11 @@ export const navigationAngles: Record<NavigationCommand, [number, number]> = {
 };
 export const navigationLabels: Record<NavigationCommand, string> = {
   home: "Sweet spot",
-  right: "Höger",
-  left: "Vänster",
-  front: "Fram",
-  back: "Bak",
-  up: "Upp",
+  right: "Right",
+  left: "Left",
+  front: "Front",
+  back: "Back",
+  up: "Up",
 };
 export function palmCenter(l: Landmark[]): { x: number; y: number } {
   const ids = [0, 5, 9, 13, 17];
