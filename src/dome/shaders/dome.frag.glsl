@@ -78,7 +78,7 @@ vec3 risingBubbles(vec3 ray,float t,float depth){
   float glint=1.-smoothstep(.09,.32,length(local/radius-vec2(-.35,.55)));
   float shell=(rim*(.30+.32*max(0.,local.y/radius))+glint*.85);
   float visibility=step(.40+k*.10,seed.x)*smoothstep(.015,.16,depth);
-  light+=vec3(.49,.84,.96)*shell*visibility/(1.+k*.44);
+  light+=vec3(.64,.84,1.)*shell*visibility/(1.+k*.44);
  }
  return light;
 }
@@ -96,17 +96,17 @@ vec3 floodWater(vec3 color, vec3 ray, float t, float depth){
  float caustic=causticNet(distorted,t);
  float daylight=smoothstep(-.04,.85,ray.z);
  float shafts=pow(max(0.,sin(distorted.x*.81+distorted.y*.56)),5.);
- vec3 pool=mix(vec3(.005,.055,.16),vec3(.065,.40,.59),daylight);
- pool=mix(pool,vec3(.013,.105,.24),reflection*.66);
- pool+=vec3(.27,.62,.72)*caustic*(.13+.48*daylight);
- pool+=vec3(.035,.21,.30)*shafts*daylight;
+ vec3 pool=mix(vec3(.022,.073,.23),vec3(.22,.49,.83),daylight);
+ pool=mix(pool,vec3(.047,.16,.39),reflection*.66);
+ pool+=vec3(.36,.59,.89)*caustic*(.13+.48*daylight);
+ pool+=vec3(.08,.20,.36)*shafts*daylight;
  float opacity=mix(.27,.92,smoothstep(.035,.48,depth));
  opacity=mix(opacity,1.,smoothstep(106.,117.,t));
- vec3 transmitted=mix(color*vec3(.78,.91,.92),pool,opacity);
+ vec3 transmitted=mix(color*vec3(.84,.89,1.),pool,opacity);
  vec3 bubbles=risingBubbles(ray,t,depth);
  float foam=pow(max(0.,.5+.5*sin(distorted.x*13.+sin(distorted.y*9.))),5.);
  return mix(color,transmitted+bubbles,submerged)
-   +vec3(.38,.76,.84)*(edge*.36+crest*foam*.20);
+   +vec3(.56,.77,1.)*(edge*.36+crest*foam*.20);
 }
 float stroke(vec2 p, vec2 a, vec2 b, float width){
  vec2 axis=b-a;
