@@ -1,0 +1,134 @@
+<!doctype html><html lang="sv"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ORBI · Wisdome-underlag</title><style>body{margin:0;background:#f5f6f1;color:#24372a;font:15px system-ui;line-height:1.6}main{max-width:1000px;margin:auto;padding:32px 24px}a{color:#355b39}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px ui-monospace,monospace;line-height:1.7}</style><main><a href="/">← Till ORBI</a><h1>Wisdome · tekniskt underlag</h1><p>Sammanställning från de officiella källorna. Fysisk verifiering på plats återstår.</p><pre># Wisdome Malmö: source-backed geometry and delivery specification
+
+Research checked against the live official Wisdome 360 site on 10 November 2026. This document separates venue-confirmed facts, the examples&#x27; coordinate conventions, and simulator approximations. It is a technical research note, not a claim that ORBI has been tested in the physical venue.
+
+## 1. Venue-confirmed facts
+
+| Parameter | Official value | Source |
+| --- | --- | --- |
+| Screen | Astro-Tec dome, about 11.6 m diameter, tilted 26°, raised at the back | [Venue](https://dcuartielles.github.io/wisdome-360/reference/venue/) |
+| Seating | 58 seats | [Venue](https://dcuartielles.github.io/wisdome-360/reference/venue/) |
+| Projection | Five projectors over a 160° screen; venue player maps the complete circular master, without cropping | [Venue](https://dcuartielles.github.io/wisdome-360/reference/venue/) |
+| Master projection | Equidistant azimuthal fisheye, 160° full FOV (80° radius) | [Geometry](https://dcuartielles.github.io/wisdome-360/reference/comfortable-zone/) |
+| Image center | Dome axis: straight ahead, +64° room elevation; not world overhead | [Geometry](https://dcuartielles.github.io/wisdome-360/reference/comfortable-zone/) |
+| Front / rear rim | −16° elevation in front; +36° behind | [Geometry](https://dcuartielles.github.io/wisdome-360/reference/comfortable-zone/) |
+| Sweet spot | Venue ring “40”, approximately +20° elevation, straight ahead; exact formula below gives +19.5556° | [Geometry](https://dcuartielles.github.io/wisdome-360/reference/comfortable-zone/) |
+| Live picture | HDMI 3840 × 2160, with centered 2160 × 2160 master; black side areas | [Connecting](https://dcuartielles.github.io/wisdome-360/reference/connecting/) |
+| Resolution | Start at 2048²; venue ceiling 6144², with larger deliveries agreed in advance | [Venue](https://dcuartielles.github.io/wisdome-360/reference/venue/) |
+| Live sound | Dante 5.1: L, R, C, LFE, Ls, Rs; stereo over HDMI fallback | [Connecting](https://dcuartielles.github.io/wisdome-360/reference/connecting/) |
+
+### Important unresolved venue detail
+
+The live [venue page](https://dcuartielles.github.io/wisdome-360/reference/venue/#still-being-confirmed) explicitly lists **which edge of a master is the room front as still being confirmed**. The official examples and simulator assume **bottom = front**. ORBI may follow that convention, but must not describe it as a venue-confirmed orientation. Confirm at rehearsal using a front marker; retain a configurable rotation if a technician requests another edge.
+
+The site&#x27;s other listed unresolved details are laptop changeover duration and the venue&#x27;s Dante sample rate. It recommends starting at 48 kHz; that is not confirmation of the actual live Dante rate.
+
+## 2. Exact projection mapping used by EX-03
+
+The authoritative actual source is [EX-03 Pulse](https://dcuartielles.github.io/wisdome-360/examples/files/EX-03-webgl-glsl/pulse.html), not just the tutorial description.
+
+For a square master pixel normalized to `p=(x,y)` in −1…1, with **y increasing upward**:
+
+```text
+r = length(p)
+if r &gt; 1: RGB = (0,0,0)
+theta = r * radians(80)
+d = p/r, or (0,0) at r=0
+local = (sin(theta)*d.x, -sin(theta)*d.y, cos(theta))
+room = (local.x,
+        local.y*cos(26°) + local.z*sin(26°),
+       -local.y*sin(26°) + local.z*cos(26°))
+azimuth = atan2(room.x,room.y)
+elevation = asin(room.z)
+```
+
+Room axes: x right, y front, z up; azimuth 0 is audience front, negative left, positive right. Elevation 0 is eye level. `r=.5` is 40° from the dome axis. A 180° master is wrong for this venue: the complete file is squeezed by 8/9 when mapped to the venue&#x27;s 160° screen.
+
+The inverse transform uses `local.y = room.y*cos(26°) - room.z*sin(26°)` and `local.z = room.y*sin(26°) + room.z*cos(26°)`, then `r=acos(local.z)/80°`, x along local.x and master y opposite local.y. ORBI&#x27;s current ProjectionMath.ts and shader roomDir agree with these formulas.
+
+The venue ring-to-room-elevation formula straight ahead is:
+
+```text
+elevation = (90 - 26) - (1 - venueRing/90) * 160/2
+sweet elevation at ring40 = 19.555555... degrees
+```
+
+Radius cancels when converting a ray to a dome-master pixel from the reference position. The 5.8 m physical radius matters for **off-center seat ray/sphere intersections**, not for changing the 160° fisheye formula.
+
+## 3. Face geometry and curvature
+
+The official [EX-08 flat-to-dome explanation and equations](https://dcuartielles.github.io/wisdome-360/examples/ex08-flat-to-dome/) distinguish correct ray projection from pasting a flat image into a fisheye:
+
+1. Master pixel → dome direction, using 80° radial mapping.
+2. Dome direction → room direction, using 26° tilt.
+3. Evaluate/intersect the actual directional or virtual surface geometry.
+
+For a planar card, use a tangent-plane ray intersection (`dot(ray,right)/dot(ray,forward)` and corresponding up coordinate), not raw fisheye pixels. This keeps straight lines straight **from the reference seat**. EX-08 recommends about 50–70° width for a flat card, and curved geometry for widths above approximately 90°. A 60° 16:9 flat card is about 36° high, not 33.75°; perspective angular dimensions are nonlinear.
+
+ORBI is intentionally a face inhabiting the spherical screen, rather than a flat rectangular card. Its geodesic/log-tangent local face coordinates can be a legitimate curved-surface design: every feature is still evaluated from the actual room ray. It should not be advertised as a perspective-flat card or as distortion-free from every seat. The actual eyes, pupils and mouth need inspection from reference, back and side seats. A face carried over the world zenith also needs a stable tangent basis; azimuth-defined up/right vectors alone can flip there.
+
+**No single prewarp makes an extended graphic perfectly undistorted for every seat.** EX-08 explicitly says aisle-seat bending is normal; the exact flat view is from the center. A measured seating plan or projection-system mesh is not provided by this site.
+
+## 4. Comfort, motion, brightness and detail
+
+[Comfortable-zone guidance](https://dcuartielles.github.io/wisdome-360/reference/comfortable-zone/) places important faces/text approximately within ±60° azimuth, −16°…+45° elevation, aimed near +20°. This is a content-comfort recommendation, not the physical screen boundary. User-requested motion outside that region is geometrically possible, but participants must turn or look overhead. Keep the idle/home face in the sweet spot.
+
+The guidance recommends slow motion in degrees/second and zero global roll. Immediate input response and maximum travel speed are different controls: removing gesture debounce need not mean teleporting a large face across the dome. Rapid local facial travel should be rehearsed even though the whole scene never rotates.
+
+Bright full-dome fields cross-reflect and reduce contrast. The [problems page](https://dcuartielles.github.io/wisdome-360/problems/) warns that the hemisphere can wash out to grey. Retain the requested colorful full-surface character, but keep adjustable brightness and compare the actual eyes/mouth at multiple levels, with simulated haze on/off and then with real projectors. The simulator does not measure calibrated luminance or projector black level.
+
+At 2048², the site uses 12.8 px/degree as its practical angular detail budget; at 4096², 25.6 px/degree. Recommended cap height: 1.5° absolute minimum, 3° for body text, 6°+ for titles. Fine iris fibers or narrow glossy outlines may disappear from distant seats; readable silhouettes and broad highlights matter more.
+
+6K renders contain nine times the pixels of 2K; the maximum resolution is not the recommended initial target. A 30 FPS delivery is required for fallback files; live stable frame rate must be measured on the installation laptop.
+
+## 5. Simulator facts and approximations
+
+Actual source: [Dome Simulator](https://dcuartielles.github.io/wisdome-360/tools/dome-simulator.html).
+
+- `DOME_R = 5.8` metres, tilt26°, file/venue FOV160°, bottom-front convention.
+- Seat positions in simulator coordinates are **explicitly approximate**, in metres:
+
+| Seat | x | y | z |
+| --- | ---: | ---: | ---: |
+| Reference | 0.0 | 0.0 | 0.0 |
+| Front | 0.0 | −0.9 | −2.6 |
+| Middle | 0.0 | 0.2 | 0.6 |
+| Back | 0.0 | 1.1 | 3.0 |
+| Far left | −2.6 | 1.0 | 2.4 |
+
+These simulator axes are not the shader&#x27;s room x/right,y/front,z/up convention. Its interactive camera and sphere functions define their own basis. A symmetric right position (+2.6,1.0,2.4) is a useful ORBI test position but is not an official measured seat.
+
+- Cross-reflection simulation adds a crude image-average term (`0.22 * average`) to projected color. It is a useful qualitative contrast test, not physical radiosity or a calibrated venue measurement.
+- Screen/window/tab sharing and still/video files are actual supported inputs. Arbitrary remote WebSocket control should not be assumed.
+- Shared-window cropping/title bars, mirroring and the chosen front edge affect results. Confirm source framing before evaluating distortion.
+- The simulator itself states it cannot reproduce physical scale, projector brightness, 5.1 sound or 58 people seated in darkness.
+
+## 6. Signal and fallback delivery
+
+[Live setup](https://dcuartielles.github.io/wisdome-360/reference/connecting/): extend the desktop, use real 3840×2160 HDMI, centered2160² at x840,y0, circle touching top/bottom, black sides and corners. Confirm adapters have not negotiated 1080p. OBS Base and Output both3840×2160,30 FPS; square source2160² positioned840,0. OBS may add one or two frames of delay; check picture/sound sync in the room.
+
+[Fallback file delivery](https://dcuartielles.github.io/wisdome-360/reference/delivery-spec/):
+
+- Square2048², equidistant160° fisheye, black corners.
+- Constant30 FPS; MP4, H.264 High (H.265 also accepted), 60 Mbit/s CBR or higher.
+- 8-bit Rec.709.
+- Audio separately, WAV48kHz/16-bit, mono files `_L _R _C _LFE _Ls _Rs`; stereo `_L _R`.
+- Audio starts frame1. A1kHz frame-one tone aligns with a white flash on frame1 of the picture.
+- Inspect the actual final files, completely, in the simulator. A CFR conversion cannot recover frames that were never captured.
+
+## 7. Actionable ORBI priorities
+
+1. Preserve verified 160°/26° ray mapping; do not add a second fisheye warp to the already directional shader.
+2. Mark bottom-front as example convention, confirm it with venue technicians, and make calibration orientation adjustable if deployment requires another edge.
+3. Keep home at approximately19.6–20° elevation; user-selected full-dome travel is not a reason to move idle overhead.
+4. Use a stable tangent basis through world zenith and keep feature footprint inside the actual circular aperture.
+5. Inspect all expressions from multiple seats; geometric mapping alone does not establish readability.
+6. Separate instant input onset from travel-speed limiting. Benchmark both recognition latency and live rendering on the Mac, including the corner camera preview.
+7. Preserve a completely UI-free projection output; camera preview/dashboard belong to the operator or must be explicitly hidden before sharing the projection window.
+8. Treat full-dome brightness, detailed glossy shading and cross-reflection as an optical tradeoff requiring venue calibration.
+9. Do not claim measured seat geometry, calibrated luminance, fixed Dante rate, finalized front orientation, hardware frame rate or venue validation from the simulator alone.
+
+## Licensing
+
+Official page footer marks original site prose/media CC BY-SA4.0 and code GPL-3.0. Imported material retains its own license. Keep attribution when adapting EX-03 or bundling simulator code; this research paraphrases its factual requirements and cites original URLs.
+</pre></main></html>

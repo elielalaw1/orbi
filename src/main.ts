@@ -1,0 +1,870 @@
+import "./style.css";
+import { installVoice } from "./gesture/VoiceInput";
+import { palmCenter } from "./gesture/GestureNavigator";
+import { normalizeDegrees } from "./dome/FaceGeometry";
+import { StateStore } from "./app/StateStore";
+import { BroadcastSync } from "./app/BroadcastSync";
+import {
+  emotions,
+  type Action,
+  type Emotion,
+  type Settings,
+  type Direction,
+} from "./app/types";
+import { DomeRenderer } from "./dome/DomeRenderer";
+import { CameraManager } from "./gesture/CameraManager";
+import { MediaPipeRecognizer } from "./gesture/MediaPipeRecognizer";
+import {
+  HandInputController,
+  type HandDetection,
+} from "./gesture/HandInputController";
+import type { Landmark } from "./gesture/CustomGestures";
+import { SoundEngine } from "./audio/SoundEngine";
+import { Recorder } from "./recording/Recorder";
+function boot() {
+  const app = document.querySelector<HTMLDivElement>("#app")!,
+    params = new URLSearchParams(location.search),
+    output = params.has("output"),
+    square = params.get("output") === "square";
+  const store = new StateStore(),
+    sync = new BroadcastSync(output),
+    sound = new SoundEngine(),
+    recorder = new Recorder();
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
+    document.getElementById(id) as T;
+  const icons: Record<Emotion, string> = {
+    neutral: "◡",
+    happy: "⌣",
+    sad: "⌢",
+    angry: "≋",
+    surprised: "○",
+    playful: "⌁",
+  };
+  const range = (
+    label: string,
+    key: keyof Settings,
+    min: number,
+    max: number,
+    step: number,
+    unit = "",
+  ) =>
+    `<label class="range-label"><span>${label}<output id="v-${key}">${store.settings[key]}${unit}</output></span><input aria-label="${label}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${store.settings[key]}"></label>`;
+  if (output) {
+    document.body.className = "output";
+    app.innerHTML =
+      '<canvas id="dome" aria-label="ORBI dome projection"></canvas>';
+    if (square) document.body.classList.add("square");
+  } else
+    app.innerHTML = `
+<aside class="sidebar"><a class="brand" href="/" aria-label="ORBI home"><span class="brand-mark">o<span>••</span></span>ORBI<span class="brand-dot">®</span></a><div class="edition">THE LIVING WISDOME</div><nav><a class="nav-item active" href="#studio"><span>◉</span> Live studio <b>01</b></a><a class="nav-item" href="#calibration"><span>⌖</span> Calibration <b>02</b></a><a class="nav-item" href="#delivery"><span>↗</span> Output & delivery <b>03</b></a></nav><div class="side-bottom"><div class="mini-orbi">••<span>◡</span></div><p>A little gesture.<br>A whole world of feeling.</p><div class="venue">MALMÖ, SWEDEN<br><strong>Wisdome · 11.6 m · 26° tilt</strong></div><span class="version">ORBI STUDIO / V1.0</span></div></aside>
+<main id="studio"><header><div class="breadcrumb">WORKSPACE <span>/</span> LIVE STUDIO</div><div class="session"><i></i> LOCAL SESSION <span id="clock">00:00</span></div></header>
+<section class="title-row"><div><div class="eyebrow">AN INTERACTIVE DOME EXPERIENCE</div><h1>Bring the room to life<span>.</span></h1><p>Your gestures. Their feelings. One very big personality.</p></div><button class="primary" id="open-output">Launch dome output <span>↗</span></button></section>
+<div class="studio-grid"><section class="preview-panel panel"><div class="panel-head"><h2><i class="live-dot"></i> <span id="view-title">In the dome</span> <span class="tag">LIVE SIMULATOR</span></h2><button class="text-button" id="toggle-simulator">View dome master</button><button class="text-button" id="guides">⌖ <span>Show guides</span> <kbd>G</kbd></button></div><div class="preview-stage simulator-view"><iframe id="simulator" src="${import.meta.env.BASE_URL}simulator/?embedded" title="Live Wisdome simulator" allow="fullscreen" loading="eager"></iframe><div class="orbital-ring"></div><canvas id="dome" aria-label="Live fisheye dome-master preview"></canvas><div class="stage-label">160° EQUIDISTANT FISHEYE</div><div class="stage-north">BACK / ZENITH <span>↑</span></div><div class="stage-front">↓ <span>FRONT OF VENUE</span></div></div><div class="preview-footer"><div><i class="live-dot"></i><span id="emotion-label">Neutral</span><span class="muted" id="activity">Feeling at home</span></div><div><span id="fps">— FPS</span><span class="divider">/</span><span id="resolution-label">1024 × 1024</span><button id="snapshot" class="text-button" aria-label="Save dome image">↓ PNG</button></div></div></section>
+<section class="camera-panel panel"><div class="panel-head"><h2>Gesture input</h2><span class="tiny-status" id="input-mode">MANUAL</span></div><div class="camera-view"><video id="camera" playsinline muted></video><canvas id="landmarks"></canvas><div id="camera-empty"><div class="camera-icon">⌁</div><h3>A wave is all it takes.</h3><p>Connect your camera to give<br>ORBI something to react to.</p></div><span class="camera-badge" id="camera-badge">CAMERA OFF</span></div><button id="camera-toggle" class="camera-start">◉ &nbsp; Start camera <span>↗</span></button><div class="telemetry"><div><span>Detected gesture</span><strong id="gesture">No gesture</strong></div><div><span>Confidence</span><strong id="confidence">—</strong></div><div><span>Direction</span><strong id="direction">Centered</strong></div><div><span>Model</span><strong id="model">Not loaded</strong></div><div><span>Inferens (CPU)</span><strong id="inference-cost">—</strong></div></div><div class="hint"><span>✦</span><p>Peka för att följa direkt. Håll andra gester kort för att ändra känsla.</p></div></section>
+<section class="emotion-panel panel"><div class="panel-head"><h2>Set the mood <span class="muted normal">A feeling fills the whole dome.</span></h2><span class="tiny-status">KEYS 1–6</span></div><div class="emotion-buttons">${emotions.map((e, i) => `<button class="emotion-button ${e === "neutral" ? "selected" : ""}" data-emotion="${e}" aria-pressed="${e === "neutral"}"><span class="emotion-face ${e}">${icons[e]}</span><strong>${e[0].toUpperCase() + e.slice(1)}</strong><span class="gesture-name">${["No gesture", "Thumbs up", "Thumbs down", "Middle finger", "Open palm", "Peace sign"][i]}</span><kbd>${i + 1}</kbd></button>`).join("")}</div></section>
+<section class="direction-panel panel"><div class="panel-head"><h2>Follow your lead</h2><span class="tiny-status">ARROW KEYS</span></div><div class="direction-content"><div class="dpad"><button data-dir="up" aria-label="Look up">↑</button><button data-dir="left" aria-label="Look left">←</button><button id="center" aria-label="Return to center">⊙</button><button data-dir="right" aria-label="Look right">→</button><button data-dir="down" aria-label="Look down">↓</button></div><p>Eyes first.<br>Curiosity follows.<small>Space to return home</small></p></div></section></div>
+<section class="lower-grid" id="calibration"><div class="panel controls"><div class="panel-head"><h2>Fine-tune the feeling</h2><button id="reset" class="text-button">↺ Reset character <kbd>R</kbd></button></div><div class="control-grid">${range("Dome brightness", "brightness", 0.15, 1, 0.01)}${range("Animation speed", "speed", 0.5, 1.5, 0.05)}<label class="select-label">Render resolution<select id="resolution"><option value="768">768 × 768 · preview</option><option value="1024" selected>1024 × 1024 · development</option><option value="2048">2048 × 2048 · production</option><option value="2160">2160 × 2160 · HDMI</option></select></label><label class="toggle-label"><span>Procedural sound<small>Optional stereo reactions</small></span><input id="audio" type="checkbox" role="switch"></label></div><details><summary>Face & animation calibration <span>＋</span></summary><div class="control-grid">${range("Home azimuth", "homeAz", -10, 10, 1, "°")}${range("Home elevation", "homeEl", 15, 25, 1, "°")}${range("Eye spacing", "eyeSpacing", 8, 18, 0.5, "°")}${range("Face scale", "faceScale", 0.6, 1.8, 0.02)}${range("Mouth scale", "mouthScale", 0.6, 1.3, 0.05)}${range("Eyebrow offset", "browOffset", -2, 2, 0.25, "°")}${range("Expression transition", "expressionMs", 250, 600, 10, " ms")}${range("Color transition", "colorMs", 600, 1200, 20, " ms")}${range("Return transition", "returnMs", 1000, 1800, 50, " ms")}${range("Directional hold", "holdMs", 500, 3000, 100, " ms")}${range("Anticipation", "anticipationMs", 100, 400, 10, " ms")}${range("Idle timeout", "idleMs", 3000, 15000, 500, " ms")}${range("Master volume", "volume", 0, 0.5, 0.01)}</div></details><details><summary>Gesture & pointing calibration <span>＋</span></summary><p class="calibration-note">Directional control is relative to the camera, not precise 3D pointing. Use a single index finger. In position mode, center your hand and press Calibrate center, then move outside the dead zone.</p><div class="control-grid"><label class="select-label">Pointing method<select id="pointing-method"><option value="orientation">Finger orientation</option><option value="position">Hand position</option></select></label><label class="toggle-label"><span>Mirror camera & directions</span><input id="mirror" type="checkbox" checked></label>${range("Confidence threshold", "confidence", 0.5, 0.95, 0.01)}${range("Stable gesture duration", "stableMs", 300, 500, 10, " ms")}${range("Reaction cooldown", "cooldownMs", 500, 2000, 100, " ms")}${range("Inference rate", "inferenceFps", 10, 30, 1, " FPS")}${range("Position dead zone", "deadZone", 0.08, 0.35, 0.01)}${range("Orientation threshold", "directionThreshold", 0.5, 0.9, 0.05)}<button class="secondary" id="calibrate">Calibrate hand center</button></div></details></div>
+<div class="panel delivery" id="delivery"><div class="panel-head"><h2>Ready for the big room?</h2><span>↗</span></div><p>A clean output. A world of expression.<br>Keep your controls right here.</p><div class="output-spec"><strong>3840 × 2160</strong><span>HDMI FRAME · CENTERED 2160² MASTER</span></div><div class="delivery-actions"><button class="secondary" id="square-output">Open square master ↗</button><button class="secondary" id="record">● Record demo</button></div><span class="delivery-note">Output window: press F for fullscreen.<br>Recording follows a 33-second scripted sequence.</span></div></section><footer><span><b class="footer-logo">ORBI</b> THE DOME IS THE CHARACTER.</span><span>BUILT FOR WISDOME MALMÖ <span class="footer-star">✳</span></span></footer></main><div id="toast" role="status" aria-live="polite"></div>`;
+  const canvas = $<HTMLCanvasElement>("dome");
+  let dashboardOpen = false;
+  let sweepTimers: number[] = [];
+  const previewDock = canvas.parentElement!;
+  if (!output) {
+    const stage = document.createElement("section");
+    stage.id = "projection-stage";
+    stage.setAttribute("aria-label", "Ren domprojektion");
+    app.prepend(stage);
+    const toolbar = document.createElement("div");
+    toolbar.className = "projection-toolbar";
+    toolbar.innerHTML =
+      '<button id="projection-camera">Starta kamera · C</button><button id="projection-fullscreen">Helskärm · F</button><button id="projection-dashboard" aria-expanded="false">Kontroller · D</button><button id="projection-preview">Kameraruta · V</button><span>Peka ← →: sidor · båda pekfingrarna ↑: upp · peka ↓: fram · peace: bak · knuten hand: mitten. Q/E roterar ansiktet. 0 nollställer rotationen. D visar kontrollerna.</span>';
+    document.body.append(toolbar);
+    const pip = document.createElement("aside");
+    pip.id = "hand-preview";
+    pip.hidden = true;
+    pip.innerHTML =
+      '<div class="pip-header"><strong>Din kamera</strong><button id="pip-hide" aria-label="Dölj kamerarutan">×</button></div><div class="pip-view"><video id="pip-video" playsinline muted></video><canvas id="pip-landmarks"></canvas></div><div class="pip-status" id="pip-status">Peka för att välja mål</div><div class="pip-legend">Peka ← →: sidor · båda pekfingrarna ↑: upp<br>Peka ↓: fram · Peace: bak · Knuten hand: sweet spot</div>';
+    document.body.append(pip);
+    $("pip-hide").onclick = () => {
+      previewWanted = false;
+      updatePreviewVisibility();
+    };
+    $("projection-preview").onclick = () => {
+      previewWanted = !previewWanted;
+      updatePreviewVisibility();
+    };
+    document.querySelector("h1")!.textContent = "ORBI · kontroller";
+    document.querySelector(".title-row p")!.textContent =
+      "Vänsterhandens gester väljer målen från testfilmen. Högerhanden ändrar känsla.";
+    const orientation = document.createElement("div");
+    orientation.className = "orientation-controls";
+    orientation.innerHTML =
+      "<h3>Räta upp ansiktet</h3>" +
+      range("Ansiktsrotation · Q/E", "rotation", -180, 180, 1, "°") +
+      '<div class="orientation-presets"><button type="button" data-roll="-90">−90°</button><button type="button" data-roll="0">0°</button><button type="button" data-roll="90">+90°</button><button type="button" data-roll="180">180°</button></div><label class="toggle-label"><span>Automatiskt rättvänt<small>Följer rummets upp-riktning, även bakom publiken</small></span><input id="auto-upright" type="checkbox" checked></label>' +
+      range("Upprätningshastighet", "orientationSpeed", 90, 720, 30, "°/s");
+    document.querySelector(".control-grid")!.prepend(orientation);
+    orientation
+      .querySelectorAll<HTMLButtonElement>("[data-roll]")
+      .forEach(
+        (button) =>
+          (button.onclick = () =>
+            rotateFace(Number(button.dataset.roll) - store.settings.rotation)),
+      );
+    $("auto-upright").onchange = () =>
+      dispatch({
+        type: "settings",
+        value: { autoUpright: ($("auto-upright") as HTMLInputElement).checked },
+      });
+    const handCalibration = document.createElement("button");
+    handCalibration.id = "calibrate-left-hand";
+    handCalibration.className = "secondary";
+    handCalibration.textContent = "Kalibrera: det här är min vänstra hand";
+    document.querySelector(".control-grid")!.append(handCalibration);
+    handCalibration.onclick = () => {
+      if (
+        lastDetections.length !== 1 ||
+        lastDetections[0].handednessScore < 0.7
+      ) {
+        toast("Visa bara din vänstra hand tydligt och tryck igen.");
+        return;
+      }
+      const label = lastDetections[0].handedness;
+      if (label !== "Left" && label !== "Right") return;
+      dispatch({ type: "settings", value: { leftHandLabel: label } });
+      gestures.clear();
+      toast("Vänster hand kalibrerad. Den handen ska nu markeras grönt.");
+    };
+    const scope = document.createElement("label");
+    scope.className = "toggle-label full-dome-setting";
+    scope.innerHTML =
+      "<span>Hela domytan är aktiv<small>Peka åt sidan med valfri hand. Båda pekfingrarna upp: upp. Peka ned: fram. Peace: bak. Knuten hand: sweet spot.</small></span>";
+    document.querySelector(".control-grid")!.prepend(scope);
+    const speed = document.createElement("div");
+    speed.innerHTML = range(
+      "Förflyttning (grader/sekund)",
+      "angularSpeed",
+      20,
+      240,
+      5,
+    );
+    document.querySelector(".control-grid")!.append(speed.firstElementChild!);
+    const navigationMode = document.createElement("label");
+    navigationMode.className = "select-label";
+    navigationMode.innerHTML =
+      'Positionsstyrning<select id="navigation-mode"><option value="gestures">Pekkommandon · fasta mål från filmen</option><option value="position">Dra med handens läge · tidigare läge</option></select>';
+    document.querySelector(".control-grid")!.append(navigationMode);
+    $("navigation-mode").onchange = () => {
+      gestures.clear();
+      dispatch({
+        type: "settings",
+        value: {
+          navigationMode: ($("navigation-mode") as HTMLSelectElement)
+            .value as Settings["navigationMode"],
+        },
+      });
+      dispatch({ type: "hand-lost" });
+    };
+    const reach = document.createElement("div");
+    reach.innerHTML = range("Handens räckvidd", "handReach", 1, 5, 0.1);
+    document.querySelector(".control-grid")!.append(reach.firstElementChild!);
+    const sweep = document.createElement("button");
+    sweep.className = "secondary";
+    sweep.textContent = "Testa hela domen (pausar kameran)";
+    document.querySelector(".control-grid")!.append(sweep);
+    sweep.onclick = () => {
+      sweepTimers.forEach(clearTimeout);
+      if (cameraRunning) stopCamera();
+      const targets = [
+        { x: -0.88, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0.88 },
+        { x: 0.88, y: 0 },
+        { x: 0, y: -0.88 },
+      ];
+      sweepTimers = targets.map((value, i) =>
+        window.setTimeout(() => dispatch({ type: "target", value }), i * 1800),
+      );
+      sweepTimers.push(
+        window.setTimeout(() => dispatch({ type: "hand-lost" }), 10000),
+      );
+    };
+    const response = document.createElement("div");
+    response.innerHTML = range(
+      "Pekrespons (ms)",
+      "pointResponseMs",
+      16,
+      200,
+      2,
+    );
+    document
+      .querySelector(".control-grid")!
+      .append(response.firstElementChild!);
+    ($("pointing-method") as HTMLSelectElement).value = "position";
+    document.querySelector(".calibration-note")!.textContent =
+      "Standardläget använder pekkommandon med fasta mål: ett pekfinger åt höger/vänster väljer sida, båda händernas pekfingrar uppåt väljer upp och ett pekfinger nedåt väljer fram. Peace väljer bak och knuten hand väljer sweet spot. Håll riktningen kort för att välja. Valfri hand kan styra; när inga händer syns återgår Orbi till sweet spot. I det alternativa läget Dra med handens läge gäller: mitten är domens zenit, nederkanten är salens framsida och överkanten baksidan. Det är kamerastyrning, inte exakt fysisk 3D-pekning. Hela den projicerbara ytan är tillgänglig; ansiktet blir mindre nära kanten.";
+    ($("resolution") as HTMLSelectElement).value = String(
+      store.settings.resolution,
+    );
+    let hideTimer: number;
+    const reveal = () => {
+      toolbar.classList.remove("idle");
+      clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        if (
+          !dashboardOpen &&
+          !document.getElementById("camera-toggle")?.hasAttribute("disabled")
+        )
+          toolbar.classList.add("idle");
+      }, 4500);
+    };
+    window.addEventListener("pointermove", reveal);
+    window.addEventListener("pointerdown", reveal);
+    setTimeout(reveal, 0);
+    $("projection-dashboard").onclick = () => setDashboard(!dashboardOpen);
+    $("projection-camera").onclick = () => void toggleCamera();
+    $("projection-fullscreen").onclick = () => void fullscreenProjection();
+    setDashboard(false);
+  }
+  function pauseSimulator(paused: boolean) {
+    const frame = $<HTMLIFrameElement>("simulator");
+    frame?.contentWindow?.postMessage(
+      { type: "orbi-visibility", visible: !paused },
+      location.origin,
+    );
+  }
+  function setDashboard(show: boolean) {
+    dashboardOpen = show;
+    document.body.classList.toggle("projection-view", !show);
+    document.body.classList.toggle("dashboard-open", show);
+    (show ? previewDock : $("projection-stage")).append(canvas);
+    document.querySelector(".projection-toolbar")?.classList.remove("idle");
+    if (!show)
+      setTimeout(() => {
+        if (!dashboardOpen)
+          document.querySelector(".projection-toolbar")?.classList.add("idle");
+      }, 4500);
+    $("projection-dashboard").textContent = show
+      ? "Dölj kontroller · D"
+      : "Kontroller · D";
+    $("projection-dashboard").setAttribute("aria-expanded", String(show));
+    pauseSimulator(!show || !previewDock.classList.contains("simulator-view"));
+  }
+  async function fullscreenProjection() {
+    setDashboard(false);
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      toast("Öppna sidan i Chrome eller Safari och välj helskärm.");
+    }
+  }
+
+  let renderer: DomeRenderer;
+  try {
+    renderer = new DomeRenderer(canvas);
+  } catch (e) {
+    document.querySelector(".projection-toolbar")?.remove();
+    document.body.classList.remove("projection-view", "dashboard-open");
+    app.innerHTML = `<div class="fatal"><h1>Projection unavailable</h1><p></p></div>`;
+    app.querySelector("p")!.textContent = String(e);
+    sync.close();
+    return;
+  }
+  function toast(message: string) {
+    if (output) {
+      console.warn(message);
+      return;
+    }
+    $("toast").textContent = message;
+    $("toast").classList.add("visible");
+    setTimeout(() => $("toast").classList.remove("visible"), 6000);
+  }
+  document.addEventListener("orbi-error", (e) =>
+    toast((e as CustomEvent).detail),
+  );
+  let previous = performance.now();
+  function advance(now: number) {
+    store.time += (now - previous) * store.settings.speed;
+    previous = now;
+  }
+  function publish() {
+    const frame = store.animator.sample(store.time, store.settings);
+    sync.send({
+      frame,
+      settings: store.settings,
+      emotion: store.animator.emotion.emotion,
+      sent: Date.now(),
+      time: store.time,
+      animation: store.animator.snapshot(),
+    });
+  }
+  function dispatch(a: Action) {
+    if (output) return;
+    advance(performance.now());
+    store.dispatch(a);
+    publish();
+    if (a.type === "emotion") sound.play(a.value, store.settings);
+    if (a.type === "target") {
+      $("direction").textContent = "Hela domen";
+      $("activity").textContent = "Följer handen";
+    }
+    if (a.type === "direction") {
+      sound.play("move", store.settings);
+      $("direction").textContent = a.value;
+      $("activity").textContent = `Curious about ${a.value}`;
+    }
+    if (a.type === "center" || a.type === "reset" || a.type === "hand-lost") {
+      $("direction").textContent = "Centered";
+      $("activity").textContent = "Feeling at home";
+    }
+  }
+  function rotateFace(delta: number) {
+    const rotation = normalizeDegrees(store.settings.rotation + delta);
+    dispatch({ type: "settings", value: { rotation } });
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-setting="rotation"]',
+    );
+    if (input) input.value = String(rotation);
+    $("v-rotation").textContent = `${rotation}°`;
+  }
+  const launch = (mode: string) => {
+    const w = window.open(
+      `/?output=${mode}`,
+      "orbi-" + mode,
+      "popup,width=1280,height=720",
+    );
+    if (!w) toast("Allow popups for localhost, then launch the output again.");
+    else toast("Move the output to the extended display, then press F there.");
+  };
+  const camera = new CameraManager(),
+    recognizer = new MediaPipeRecognizer(),
+    gestures = new HandInputController();
+  let cameraRunning = false,
+    cameraBusy = false,
+    modelLoaded = false,
+    lastInference = 0,
+    lastVideoTime = -1,
+    lastLandmarks: Landmark[] = [],
+    lastDetections: HandDetection[] = [];
+  let previewWanted = true,
+    lastFrameAt = 0,
+    staleReturned = false,
+    inferenceCostMs = 0;
+  function updatePreviewVisibility() {
+    const pip = $("hand-preview");
+    if (pip) pip.hidden = !cameraRunning || !previewWanted;
+  }
+  function stopCamera() {
+    cameraRunning = false;
+    camera.stop($<HTMLVideoElement>("camera"));
+    gestures.clear();
+    lastLandmarks = [];
+    lastDetections = [];
+    dispatch({ type: "hand-lost" });
+    const pipVideo = $<HTMLVideoElement>("pip-video");
+    if (pipVideo) pipVideo.srcObject = null;
+    updatePreviewVisibility();
+    $("camera-empty").style.display = "";
+    $("camera-toggle").textContent = "◉ Start camera";
+    $("camera-badge").textContent = "CAMERA OFF";
+    $("input-mode").textContent = "MANUAL";
+    $("projection-camera").textContent = "Starta kamera · C";
+    $("gesture").textContent = "No gesture";
+    $("confidence").textContent = "—";
+    const overlay = $<HTMLCanvasElement>("landmarks");
+    overlay.getContext("2d")!.clearRect(0, 0, overlay.width, overlay.height);
+  }
+  const voice = !output ? installVoice($("projection-camera"), dispatch) : null;
+  window.addEventListener("pagehide", () => voice?.stop());
+  async function toggleCamera() {
+    if (cameraBusy) return;
+    sweepTimers.forEach(clearTimeout);
+    sweepTimers = [];
+    if (cameraRunning) {
+      stopCamera();
+      return;
+    }
+    cameraBusy = true;
+    const button = $<HTMLButtonElement>("camera-toggle");
+    button.disabled = true;
+    try {
+      $("model").textContent = modelLoaded ? "Ready" : "Loading…";
+      await camera.start($("camera"));
+      if (!modelLoaded) {
+        await recognizer.load();
+        modelLoaded = true;
+      }
+      $("model").textContent = "Ready · local";
+      cameraRunning = true;
+      lastFrameAt = performance.now();
+      staleReturned = false;
+      gestures.clear();
+      const pipVideo = $<HTMLVideoElement>("pip-video");
+      pipVideo.srcObject = camera.stream;
+      updatePreviewVisibility();
+      await pipVideo
+        .play()
+        .catch(() =>
+          toast(
+            "Kamerarutan kunde inte spelas upp. Geststyrningen fortsätter.",
+          ),
+        );
+      updatePreviewVisibility();
+      dispatch({ type: "hand-lost" });
+      lastVideoTime = -1;
+      $("camera-empty").style.display = "none";
+      button.textContent = "■ Stop camera";
+      $("camera-badge").textContent = "CAMERA LIVE";
+      $("input-mode").textContent = "CAMERA";
+    } catch (e) {
+      stopCamera();
+      $("model").textContent = modelLoaded ? "Ready" : "Unavailable";
+      toast(
+        `Camera or model unavailable: ${e instanceof Error ? e.message : String(e)}. Manual controls remain available.`,
+      );
+    } finally {
+      cameraBusy = false;
+      button.disabled = false;
+      $("projection-camera").textContent = cameraRunning
+        ? "Stoppa kamera · C"
+        : "Starta kamera · C";
+    }
+  }
+  const connections = [
+    [0, 1, 2, 3, 4],
+    [0, 5, 6, 7, 8],
+    [5, 9, 10, 11, 12],
+    [9, 13, 14, 15, 16],
+    [13, 17, 18, 19, 20],
+    [0, 17],
+  ];
+  function infer(now: number) {
+    if (!cameraRunning) return;
+    const video = $<HTMLVideoElement>("camera"),
+      s = store.settings;
+    if (video.readyState < 2 || video.currentTime === lastVideoTime) {
+      if (now - lastFrameAt > 750 && !staleReturned) {
+        dispatch({ type: "hand-lost" });
+        gestures.clear();
+        staleReturned = true;
+        lastDetections = [];
+        $("pip-status").textContent = "Ingen kamerasignal · sweet spot";
+      }
+      return;
+    }
+    if (
+      now - lastInference <
+      Math.max(1000 / s.inferenceFps, inferenceCostMs * 1.8)
+    )
+      return;
+    lastFrameAt = now;
+    staleReturned = false;
+    lastInference = now;
+    lastVideoTime = video.currentTime;
+    try {
+      const inferenceStarted = performance.now();
+      const result = recognizer.recognize(video, now);
+      const elapsed = performance.now() - inferenceStarted;
+      inferenceCostMs = inferenceCostMs
+        ? inferenceCostMs * 0.8 + elapsed * 0.2
+        : elapsed;
+      lastDetections = result.landmarks.map((landmarks, index) => ({
+        landmarks,
+        gesture: result.gestures[index]?.[0]?.categoryName || null,
+        score: result.gestures[index]?.[0]?.score || 0,
+        handedness: result.handedness[index]?.[0]?.categoryName || "",
+        handednessScore: result.handedness[index]?.[0]?.score || 0,
+      }));
+      const routed = gestures.update(lastDetections, now, s);
+      lastLandmarks =
+        routed.controlIndex >= 0
+          ? lastDetections[routed.controlIndex].landmarks
+          : [];
+      for (const action of routed.actions) dispatch(action);
+      $("gesture").textContent = routed.label
+        .replaceAll("_", " ")
+        .replace("point:", "Pekar ");
+      $("confidence").textContent = lastDetections.length
+        ? `${Math.round(routed.score * 100)}%`
+        : "—";
+      $("pip-status").textContent =
+        routed.controlIndex >= 0
+          ? routed.positionLabel
+          : "Ingen vänster hand · åter till sweet spot";
+      if (!dashboardOpen && $("hand-preview").hidden) return;
+      const overlay = $<HTMLCanvasElement>("landmarks");
+      if (overlay.width !== 640 || overlay.height !== 480) {
+        overlay.width = 640;
+        overlay.height = 480;
+      }
+      const ctx = overlay.getContext("2d")!;
+      ctx.clearRect(0, 0, 640, 480);
+      if (s.navigationMode === "position") {
+        const halfX =
+            (Math.max(0.2, s.centerX, 1 - s.centerX) * 0.9) / s.handReach,
+          halfY = (Math.max(0.2, s.centerY, 1 - s.centerY) * 0.9) / s.handReach;
+        ctx.strokeStyle = "#ffffffaa";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([7, 5]);
+        ctx.strokeRect(
+          (s.centerX - halfX) * 640,
+          (s.centerY - halfY) * 480,
+          halfX * 1280,
+          halfY * 960,
+        );
+        ctx.setLineDash([]);
+      }
+      ctx.lineWidth = 2;
+      lastDetections.forEach((hand, index) => {
+        const l = hand.landmarks;
+        ctx.strokeStyle = ctx.fillStyle =
+          index === routed.controlIndex ? "#b5ff60" : "#70cdff";
+        for (const chain of connections) {
+          ctx.beginPath();
+          chain.forEach((j, k) => {
+            if (l[j]) {
+              const x = l[j].x * 640,
+                y = l[j].y * 480;
+              k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+            }
+          });
+          ctx.stroke();
+        }
+        if (index === routed.controlIndex && l[9]) {
+          const p = palmCenter(l);
+          ctx.beginPath();
+          ctx.arc(p.x * 640, p.y * 480, 7, 0, Math.PI * 2);
+          ctx.strokeStyle = "#ffffff";
+          ctx.stroke();
+        }
+        for (const pt of l) {
+          ctx.beginPath();
+          ctx.arc(pt.x * 640, pt.y * 480, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+      if ($("hand-preview").hidden) return;
+      const pipOverlay = $<HTMLCanvasElement>("pip-landmarks");
+      if (pipOverlay.width !== 640) {
+        pipOverlay.width = 640;
+        pipOverlay.height = 480;
+      }
+      const pipContext = pipOverlay.getContext("2d")!;
+      pipContext.clearRect(0, 0, 640, 480);
+      pipContext.drawImage(overlay, 0, 0);
+    } catch (e) {
+      stopCamera();
+      toast(`Recognition stopped: ${String(e)}. Use manual controls.`);
+    }
+  }
+  if (!output) {
+    $("simulator").addEventListener("load", () =>
+      pauseSimulator(
+        !dashboardOpen || !previewDock.classList.contains("simulator-view"),
+      ),
+    );
+    $("toggle-simulator").onclick = () => {
+      const stage = document.querySelector(".preview-stage")!;
+      const inSimulator = stage.classList.toggle("simulator-view");
+      $("view-title").textContent = inSimulator ? "In the dome" : "Dome master";
+      $("toggle-simulator").textContent = inSimulator
+        ? "View dome master"
+        : "View in simulator";
+      pauseSimulator(!inSimulator);
+    };
+    window.addEventListener("message", (event) => {
+      if (
+        event.origin !== location.origin ||
+        event.source !== $<HTMLIFrameElement>("simulator").contentWindow ||
+        event.data?.type !== "orbi-key"
+      )
+        return;
+      document.body.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: event.data.key,
+          code: event.data.code,
+          repeat: event.data.repeat,
+          shiftKey: event.data.shiftKey,
+          bubbles: true,
+        }),
+      );
+    });
+    $("open-output").onclick = () => launch("hdmi");
+    $("square-output").onclick = () => launch("square");
+    $("camera-toggle").onclick = toggleCamera;
+    camera.onDisconnect = () => {
+      stopCamera();
+      toast(
+        "Camera disconnected. Reconnect and start again, or use manual controls.",
+      );
+    };
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-emotion]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            dispatch({ type: "emotion", value: b.dataset.emotion as Emotion })),
+      );
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-dir]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            dispatch({ type: "direction", value: b.dataset.dir as Direction })),
+      );
+    $("center").onclick = () => dispatch({ type: "center" });
+    $("reset").onclick = () => dispatch({ type: "reset" });
+    $("guides").onclick = () =>
+      dispatch({ type: "settings", value: { guides: !store.settings.guides } });
+    document.querySelectorAll<HTMLInputElement>("[data-setting]").forEach(
+      (input) =>
+        (input.oninput = () => {
+          const key = input.dataset.setting as keyof Settings;
+          dispatch({ type: "settings", value: { [key]: Number(input.value) } });
+          $(`v-${key}`).textContent = input.value;
+        }),
+    );
+    $("resolution").onchange = (e) => {
+      if (recorder.active) {
+        ($("resolution") as HTMLSelectElement).value = String(
+          store.settings.resolution,
+        );
+        toast("Stop recording before changing canvas resolution.");
+        return;
+      }
+      dispatch({
+        type: "settings",
+        value: { resolution: Number((e.target as HTMLSelectElement).value) },
+      });
+    };
+    $("pointing-method").onchange = (e) => {
+      gestures.clear();
+      dispatch({
+        type: "settings",
+        value: {
+          pointingMethod: (e.target as HTMLSelectElement)
+            .value as Settings["pointingMethod"],
+        },
+      });
+    };
+    $("mirror").onchange = (e) => {
+      const mirrored = (e.target as HTMLInputElement).checked;
+      dispatch({ type: "settings", value: { mirrored } });
+      document
+        .querySelector(".camera-view")!
+        .classList.toggle("unmirrored", !mirrored);
+      $("hand-preview").classList.toggle("unmirrored", !mirrored);
+      gestures.clear();
+    };
+    $("calibrate").onclick = () => {
+      if (!lastLandmarks.length) {
+        toast(
+          "Start the camera and hold one hand at your desired center first.",
+        );
+        return;
+      }
+      dispatch({
+        type: "settings",
+        value: { centerX: lastLandmarks[9].x, centerY: lastLandmarks[9].y },
+      });
+      toast("Hand center calibrated for position control.");
+    };
+    $("audio").onchange = async (e) => {
+      try {
+        await sound.unlock();
+        dispatch({
+          type: "settings",
+          value: { audio: (e.target as HTMLInputElement).checked },
+        });
+      } catch {
+        toast("Audio unavailable; visuals remain active.");
+      }
+    };
+    $("snapshot").onclick = () => {
+      const a = document.createElement("a");
+      a.download = "orbi-dome-master.png";
+      a.href = canvas.toDataURL();
+      a.click();
+    };
+    $("record").onclick = () => {
+      if (recorder.active) {
+        recorder.stop();
+        return;
+      }
+      try {
+        if (cameraRunning) stopCamera();
+        if (store.settings.guides)
+          dispatch({ type: "settings", value: { guides: false } });
+        recorder.start(canvas, dispatch, () => {
+          $("record").textContent = "● Record demo";
+          toast(
+            "Recording downloaded. Convert it using the README delivery command.",
+          );
+        });
+        $("record").textContent = "■ Stop recording";
+        toast(
+          "Recording the square master. Keep this tab active for 33 seconds.",
+        );
+      } catch (e) {
+        toast(String(e));
+      }
+    };
+  }
+  window.addEventListener("keydown", (e) => {
+    if ((e.target as HTMLElement).matches("input,select,textarea") && !output)
+      return;
+    if (output) {
+      if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+      return;
+    }
+    if (e.key.toLowerCase() === "d") {
+      e.preventDefault();
+      setDashboard(!dashboardOpen);
+      return;
+    }
+    if (e.key.toLowerCase() === "v") {
+      e.preventDefault();
+      previewWanted = !previewWanted;
+      updatePreviewVisibility();
+      return;
+    }
+    if (e.key.toLowerCase() === "c") {
+      e.preventDefault();
+      if (!e.repeat) void toggleCamera();
+      return;
+    }
+    if (e.key.toLowerCase() === "f") {
+      e.preventDefault();
+      if (!e.repeat) void fullscreenProjection();
+      return;
+    }
+    if (e.key === "Escape" && dashboardOpen) {
+      setDashboard(false);
+      return;
+    }
+    if (e.key.toLowerCase() === "q" || e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      rotateFace(
+        (e.key.toLowerCase() === "q" ? -1 : 1) * (e.shiftKey ? 15 : 5),
+      );
+      return;
+    }
+    if (e.key === "0") {
+      e.preventDefault();
+      rotateFace(-store.settings.rotation);
+      return;
+    }
+    const n = Number(e.key);
+    if (n >= 1 && n <= 6) dispatch({ type: "emotion", value: emotions[n - 1] });
+    const dir: Record<string, Direction> = {
+      ArrowLeft: "left",
+      ArrowRight: "right",
+      ArrowUp: "up",
+      ArrowDown: "down",
+    };
+    if (dir[e.key]) {
+      e.preventDefault();
+      if (!e.repeat) dispatch({ type: "direction", value: dir[e.key] });
+    }
+    if (e.code === "Space") {
+      e.preventDefault();
+      dispatch({ type: "center" });
+    }
+    if (e.key.toLowerCase() === "g")
+      dispatch({ type: "settings", value: { guides: !store.settings.guides } });
+    if (e.key.toLowerCase() === "r") dispatch({ type: "reset" });
+  });
+  sync.onRequest = () => {
+    advance(performance.now());
+    publish();
+  };
+  sync.onFrame = (snapshot) => {
+    previous = performance.now();
+    store.animator.restore(snapshot.animation);
+    store.settings = { ...snapshot.settings };
+    store.time =
+      snapshot.time +
+      Math.min(500, Date.now() - snapshot.sent) * snapshot.settings.speed;
+  };
+  let lastSync = 0,
+    uiUpdate = 0,
+    frames = 0,
+    frameStart = previous;
+  function animate(now: number) {
+    advance(now);
+    frames++;
+    if (output) {
+      const snapshot = sync.latest;
+      if (snapshot)
+        renderer.render(
+          store.animator.sample(store.time, store.settings),
+          store.settings,
+          square ? store.settings.resolution : 2160,
+        );
+      else
+        renderer.render(
+          store.animator.sample(store.time, store.settings),
+          store.settings,
+          square ? 1024 : 2160,
+        );
+    } else {
+      infer(now);
+      const frame = store.animator.sample(store.time, store.settings);
+      renderer.render(frame, store.settings);
+      if (now - lastSync > 33) {
+        sync.send({
+          frame,
+          settings: store.settings,
+          emotion: store.animator.emotion.emotion,
+          sent: Date.now(),
+          time: store.time,
+          animation: store.animator.snapshot(),
+        });
+        lastSync = now;
+      }
+      if (now - uiUpdate > 250) {
+        $("inference-cost").textContent = cameraRunning
+          ? `${Math.round(inferenceCostMs)} ms`
+          : "—";
+        const emotion = store.animator.emotion.emotion;
+        $("emotion-label").textContent =
+          emotion[0].toUpperCase() + emotion.slice(1);
+        document
+          .querySelectorAll<HTMLButtonElement>("[data-emotion]")
+          .forEach((b) => {
+            const selected = b.dataset.emotion === emotion;
+            b.classList.toggle("selected", selected);
+            b.setAttribute("aria-pressed", String(selected));
+          });
+        $("resolution-label").textContent =
+          `${store.settings.resolution} × ${store.settings.resolution}`;
+        $("guides").querySelector("span")!.textContent = store.settings.guides
+          ? "Hide guides"
+          : "Show guides";
+        $("guides").classList.toggle("enabled", store.settings.guides);
+        const sec = Math.floor(store.time / 1000);
+        $("clock").textContent =
+          `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+        uiUpdate = now;
+      }
+      if (now - frameStart >= 1000) {
+        $("fps").textContent =
+          `${Math.round((frames * 1000) / (now - frameStart))} FPS`;
+        frames = 0;
+        frameStart = now;
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+  window.addEventListener("pagehide", () => {
+    sync.close();
+    recognizer.close();
+    camera.stream?.getTracks().forEach((t) => t.stop());
+  });
+}
+boot();

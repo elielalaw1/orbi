@@ -1,0 +1,13 @@
+# Calibration
+
+1. Start with manual controls. Set brightness around 0.5–0.7, use 1024² in studio and open square output. In the official simulator choose Wisdome 160°, 26° tilt, front bottom, mirror off and crop 100%.
+2. Toggle G. The green outline is the comfortable zone (±60° azimuth, −16° to +45° elevation); the white dot is the +20° sweet spot. Grid spacing is 30° azimuth and 15° elevation. The red marker is the front rim. Yellow must cover the entire circle and corners must stay black.
+3. Adjust home azimuth/elevation, eye spacing, scale, mouth size, roll and eyebrow offset. Home controls are restricted to sensible limits; movement is clamped to azimuth ±25° and elevation +8° to +32°. Face scale shrinks during upper/lower travel to keep features visible. Do not use roll as a continuous animation.
+4. Start the built-in webcam. Face the participant with even frontal lighting; show only one hand. The preview is mirrored by default. Moving the hand toward the right of that preview should select right in position mode. Disable mirroring only if needed; the overlay and classifier change together.
+5. **Finger orientation:** extend only the index finger, fold the others, point toward a camera-frame edge. The direction is measured from index MCP to fingertip. It uses normalized 2D direction, dominant axis, threshold and diagonal hysteresis. A finger pointing at the camera may have too little 2D length and will be rejected.
+6. **Hand position:** choose Hand position, hold an index pose at your desired center and press Calibrate hand center. Move the hand left/right/up/down outside the configurable dead zone. Return to the center to release. This is the recommended fallback when orientation is unreliable.
+7. Hold each gesture for roughly 0.4 seconds. Increase confidence/stability or lower inference rate under poor conditions. Release a pose for at least 0.18 seconds before repeating it. The default cooldown is 0.9 seconds.
+8. Test all four directions: pupils should move first, followed by the face, then return. Inspect the mouth near the lower cutoff and brows during upward surprise. Change face scale or home elevation if needed for the actual audience and obstructions.
+9. Evaluate neutral, happy, sad, angry, surprised and playful from several seats with simulated cross-reflection on/off. Then tune brightness in the real dome. Keep guides off for the show.
+
+Calibration is held in memory for the current session. Write down changes in your operator run sheet before reload. A single camera selects four calibrated directions; it cannot infer an exact target on the physical dome.
