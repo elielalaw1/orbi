@@ -18,22 +18,31 @@ export class Recorder {
     canvas: HTMLCanvasElement,
     dispatch: (a: Action) => void,
     onEnd: () => void,
+    options: { audioTracks?: MediaStreamTrack[]; scripted?: boolean } = {},
   ) {
     if (!canvas.captureStream || !window.MediaRecorder)
       throw Error("Canvas recording is unavailable in this browser. Use OBS.");
     const mime = [
-      "video/webm;codecs=vp9",
-      "video/webm;codecs=vp8",
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
       "video/webm",
     ].find((m) => MediaRecorder.isTypeSupported(m));
     if (!mime)
       throw Error("This browser cannot record WebM. Use Chrome or OBS.");
-    const stream = canvas.captureStream(30),
+    const stream = canvas.captureStream(30);
+    for (const track of options.audioTracks ?? []) stream.addTrack(track);
+    let recorder: MediaRecorder;
+    try {
       recorder = new MediaRecorder(stream, {
         mimeType: mime,
-        videoBitsPerSecond: 16000000,
-      }),
-      chunks: Blob[] = [];
+        videoBitsPerSecond: 60000000,
+        audioBitsPerSecond: 256000,
+      });
+    } catch (error) {
+      stream.getTracks().forEach(track => track.stop());
+      throw error;
+    }
+    const chunks: Blob[] = [];
     this.recorder = recorder;
     this.active = true;
     recorder.ondataavailable = (e) => {
@@ -51,6 +60,7 @@ export class Recorder {
       onEnd();
     };
     recorder.start(1000);
+    if (options.scripted === false) return;
     this.timers = demo.map((step) =>
       window.setTimeout(() => dispatch(step.action), step.at),
     );

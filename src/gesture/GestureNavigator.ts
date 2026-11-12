@@ -32,10 +32,10 @@ export interface NavigationHand {
   gesture: string | null;
   score: number;
 }
-// Direction follows the mirrored camera preview, independent of which hand points.
-export function indexDirection(l: Landmark[], mirrored: boolean) {
+// Camera mirroring and physical dome left/right inversion are independent.
+export function indexDirection(l: Landmark[], mirrored: boolean, invertHorizontal = false) {
   if (!isolatedIndex(l)) return null;
-  const dx = (l[8].x - l[5].x) * (mirrored ? -1 : 1);
+  const dx = (l[8].x - l[5].x) * (mirrored ? -1 : 1) * (invertHorizontal ? -1 : 1);
   const dy = l[5].y - l[8].y;
   if (Math.hypot(dx, dy) < 0.035) return null;
   if (Math.abs(dx) > Math.abs(dy) * 1.35) return dx > 0 ? "right" : "left";
@@ -48,7 +48,7 @@ export class GestureNavigator {
   private poseAt = 0;
   private latched: NavigationCommand | null = null;
   updateHands(hands: NavigationHand[], now: number, s: Settings) {
-    const directions = hands.map(h => indexDirection(h.landmarks, s.mirrored));
+    const directions = hands.map(h => indexDirection(h.landmarks, s.mirrored, s.invertHorizontal));
     let pose: NavigationCommand | null = null;
     if (directions.filter(d => d === "up").length >= 2) pose = "up";
     else {

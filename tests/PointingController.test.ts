@@ -1,7 +1,8 @@
 import { it, expect } from "vitest";
 import { PointingController } from "../src/gesture/PointingController";
-import { defaults as originalDefaults } from "../src/app/types";
+import { defaults as siteDefaults } from "../src/app/types";
 import { hand } from "./fixtures";
+const originalDefaults={...siteDefaults,invertHorizontal:false};
 const defaults={...originalDefaults,pointingMethod:"orientation" as const};
 it("handles orientation, mirroring, dead zone and calibrated position", () => {
   const p = new PointingController(),
@@ -26,4 +27,23 @@ it('reaches the left, right, front and back rim without moving the hand out of v
 it('keeps the calibrated center at zero while adjusting hand reach',()=>{
  const p=new PointingController(),l=hand([5]);l[9]={x:.6,y:.55,z:0};expect(p.target(l,{...originalDefaults,centerX:.6,centerY:.55})).toEqual({x:-0,y:0});
  l[9].x=.7;const low=p.target(l,{...originalDefaults,handReach:1})!,high=p.target(l,{...originalDefaults,handReach:4})!;expect(Math.abs(high.x)).toBeGreaterThan(Math.abs(low.x));
+});
+
+it("inverts only horizontal position and orientation for the dome setup", () => {
+  for (const mirrored of [false, true]) {
+    const landmarks=hand([5]);
+    landmarks[8]={x:.8,y:landmarks[5].y,z:0};
+    landmarks[9]={x:.7,y:.4,z:0};
+    for (const pointingMethod of ["orientation", "position"] as const) {
+      const settings={...originalDefaults,mirrored,pointingMethod};
+      const normal=new PointingController().classify(landmarks,settings);
+      const flipped=new PointingController().classify(landmarks,{...settings,invertHorizontal:true});
+      expect(flipped).toBe(normal === "left" ? "right" : normal === "right" ? "left" : normal);
+    }
+    const p=new PointingController();
+    const normal=p.target(landmarks,{...originalDefaults,mirrored})!;
+    const flipped=p.target(landmarks,{...originalDefaults,mirrored,invertHorizontal:true})!;
+    expect(flipped.x).toBeCloseTo(-normal.x);
+    expect(flipped.y).toBeCloseTo(normal.y);
+  }
 });

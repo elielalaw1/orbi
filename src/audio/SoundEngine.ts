@@ -5,6 +5,13 @@ import type { Frame } from "../character/FaceAnimator";
 export class SoundEngine {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
+  private recordingDestination: MediaStreamAudioDestinationNode | null = null;
+
+  /** Clone tracks so stopping a recorder leaves live audio and later recordings intact. */
+  recordingTracks(): MediaStreamTrack[] {
+    if (!this.recordingDestination) throw new Error("Enable sound before recording.");
+    return this.recordingDestination.stream.getAudioTracks().map(track => track.clone());
+  }
   private noise: AudioBuffer | null = null;
   private lastBlink = false;
   private lastKiss = false;
@@ -105,6 +112,9 @@ export class SoundEngine {
       this.master = this.context.createGain();
       this.master.gain.value = 0;
       this.master.connect(this.context.destination);
+      this.recordingDestination = this.context.createMediaStreamDestination();
+      this.recordingDestination.channelCount = 2;
+      this.master.connect(this.recordingDestination);
       this.noise = this.context.createBuffer(1, this.context.sampleRate, this.context.sampleRate);
       const samples = this.noise.getChannelData(0);
       for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;

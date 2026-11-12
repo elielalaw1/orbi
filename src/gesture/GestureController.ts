@@ -2,7 +2,7 @@ import type { Action, Emotion, Settings, Direction } from '../app/types';
 import {GestureStabilizer} from './GestureStabilizer';
 import {PointingController} from './PointingController';
 import {middleFinger,isolatedIndex,type Landmark} from './CustomGestures';
-const reactions:Record<string,Emotion>={Thumb_Up:'happy',Thumb_Down:'sad',Open_Palm:'surprised',Victory:'playful',Middle_Finger:'angry',Closed_Fist:'surprised'};
+const reactions:Record<string,Emotion>={Thumb_Up:'happy',Thumb_Down:'sad',Open_Palm:'surprised',Victory:'playful',ILoveYou:'playful',Middle_Finger:'angry',Closed_Fist:'surprised'};
 export class GestureController{
  private stabilizer=new GestureStabilizer();private pointer=new PointingController();private tracking=false;private lastDirection:Direction|null=null;
  process(l:Landmark[],known:string|null,confidence:number,now:number,s:Settings):{label:string|null;score:number;action:Action|null}{

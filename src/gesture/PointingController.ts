@@ -17,6 +17,7 @@ export class PointingController {
       y /= n;
     }
     if (s.mirrored) x = -x;
+    if (s.invertHorizontal) x = -x;
     const threshold =
       s.pointingMethod === "position" ? s.deadZone : s.directionThreshold;
     if (Math.max(Math.abs(x), Math.abs(y)) < threshold) {
@@ -45,7 +46,7 @@ export class PointingController {
     let x=(l[9].x-s.centerX)/Math.max(.2,s.centerX,1-s.centerX);
     const y=(s.centerY-l[9].y)/Math.max(.2,s.centerY,1-s.centerY);
     x*=s.handReach;const targetY=y*s.handReach;
-    if(s.mirrored)x=-x;const r=Math.hypot(x,targetY),k=r>.9?.9/r:1;
+    if(s.mirrored)x=-x;if(s.invertHorizontal)x=-x;const r=Math.hypot(x,targetY),k=r>.9?.9/r:1;
     return {x:x*k,y:targetY*k};
   }
   clear() {

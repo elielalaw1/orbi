@@ -1,8 +1,9 @@
-import type { Action, GestureScene, Settings } from "../app/types";
+import type { Action, Settings } from "../app/types";
 import { heartHands, type Landmark } from "./CustomGestures";
 import { GestureNavigator, palmCenter, indexDirection } from "./GestureNavigator";
 import { PointingController } from "./PointingController";
 import { GestureController } from "./GestureController";
+import { sceneGestures, type SceneGesture } from "./GestureBindings";
 export interface HandDetection {
   landmarks: Landmark[];
   gesture: string | null;
@@ -10,10 +11,6 @@ export interface HandDetection {
   handedness: string;
   handednessScore: number;
 }
-const pairScenes = new Map<string, GestureScene>([
-  ["Closed_Fist", "gravity"],
-  ["Thumb_Up", "boxing"],
-]);
 
 export class HandInputController {
   private left = new GestureController();
@@ -23,50 +20,43 @@ export class HandInputController {
   private lastPalm: { x: number; y: number } | null = null;
   private hadLeft = false;
   private initialized = false;
-  private heartSince: number | null = null;
-  private heartFired = false;
-  private heartSeen = -Infinity;
-  private pairSeen = -Infinity;
+  private heldScene: SceneGesture | undefined;
+  private sceneSince = 0;
+  private sceneSeen = -Infinity;
+  private sceneFired = false;
   update(hands: HandDetection[], now: number, s: Settings) {
-    if (hands.length === 2 && hands.every(h=>h.handednessScore >= .45) &&
-        heartHands(hands[0].landmarks,hands[1].landmarks)) {
-      this.heartSeen = now;
-      this.heartSince ??= now;
-      const actions: Action[] = [];
-      if (!this.heartFired && now-this.heartSince >= 450) {
-        actions.push({type:"routine",value:"flirt"});
-        this.heartFired = true;
-      }
-      this.pair = undefined;
-      const label = this.heartFired ? "Heart · flirt" : "Hold your heart";
-      return {actions,controlIndex:0,label,positionLabel:label,score:Math.min(...hands.map(h=>h.handednessScore))};
+    const validPair = hands.length === 2 && hands.every(h =>
+      h.landmarks.length === 21 && h.handednessScore >= .45);
+    let detected: SceneGesture | undefined;
+    if (validPair && heartHands(hands[0].landmarks, hands[1].landmarks)) {
+      detected = sceneGestures.find(binding => binding.id === "flirt");
+    } else if (validPair && hands.every(h => h.score >= Math.max(.45, s.confidence - .15))) {
+      detected = sceneGestures.find(binding => {
+        const poses = binding.modelGestures;
+        return poses && ((hands[0].gesture === poses[0] && hands[1].gesture === poses[1]) ||
+          (hands[0].gesture === poses[1] && hands[1].gesture === poses[0]));
+      });
     }
-    if (now - this.heartSeen < 180) {
-      return {actions: [] as Action[], controlIndex: -1, label: "Hold your heart",
-        positionLabel: "Hold your heart", score: 0};
-    }
-    this.heartSince = null;
-    this.heartFired = false;
-    const first = hands[0];
-    const matching = hands.length === 2 && hands.every(h =>
-      h.landmarks.length === 21 && h.gesture === first.gesture && h.score >= Math.max(.45, s.confidence - .15));
-    const detectedScene = matching ? pairScenes.get(first.gesture ?? "") : undefined;
-    if (detectedScene) this.pairSeen = now;
-    const scene = detectedScene ?? (now - this.pairSeen < 180 ? this.pair : undefined);
-    if (scene !== this.pair) {
-      this.pair = scene;
-      this.pairSince = now;
-      this.pairFired = false;
+    if (detected) this.sceneSeen = now;
+    const scene = detected ?? (now - this.sceneSeen < 180 ? this.heldScene : undefined);
+    if (scene !== this.heldScene) {
+      this.heldScene = scene;
+      this.sceneSince = now;
+      this.sceneFired = false;
+      // A scene pose owns both hands: do not accumulate single-hand moods or navigation.
+      this.left.clear();
+      this.other.clear();
+      this.navigator.clear();
     }
     if (scene) {
       const actions: Action[] = [];
-      if (detectedScene && !this.pairFired && now - this.pairSince >= 450) {
-        actions.push({type: "routine", value: scene});
-        this.pairFired = true;
+      if (detected && !this.sceneFired && now - this.sceneSince >= 450) {
+        actions.push(scene.action);
+        this.sceneFired = true;
       }
-      const label = this.pairFired ? scene : `Hold for ${scene}`;
-      return {actions, controlIndex: hands.length ? 0 : -1, label, positionLabel: label,
-        score: detectedScene ? Math.min(first.score, hands[1].score) : 0};
+      const label = this.sceneFired ? scene.label : `Hold for ${scene.label}`;
+      return { actions, controlIndex: hands.length ? 0 : -1, label, positionLabel: label,
+        score: detected ? Math.min(...hands.map(h => h.score)) : 0 };
     }
     if (s.navigationMode === "gestures") return this.updateCommands(hands, now, s);
     const controlIndex = hands.reduce(
@@ -138,9 +128,6 @@ export class HandInputController {
     this.initialized = true;
     return { actions, controlIndex, label, score, positionLabel };
   }
-  private pair: GestureScene | undefined;
-  private pairSince=0;
-  private pairFired=false;
   private updateCommands(hands: HandDetection[], now: number, s: Settings) {
     const valid = hands.filter(h => h.landmarks.length === 21 && h.handednessScore >= 0.55);
     const actions: Action[] = [];
@@ -153,7 +140,8 @@ export class HandInputController {
     } else {
       const navigation = this.navigator.updateHands(valid, now, s);
       if (navigation.selected === "home") {
-        if (!this.hadLeft || navigation.command === "home") actions.push({ type: "hand-lost" });
+        if (navigation.command === "home") actions.push({ type: "center" });
+        else if (!this.hadLeft) actions.push({ type: "hand-lost" });
       } else actions.push({ type: "target", value: navigation.target });
       positionLabel = `${navigation.label} · point to choose a destination`;
       controlIndex = hands.findIndex(h => valid.includes(h) && !!indexDirection(h.landmarks, s.mirrored));
@@ -171,9 +159,10 @@ export class HandInputController {
     return { actions, controlIndex, label: positionLabel, score: valid[0]?.handednessScore ?? 0, positionLabel };
   }
   clear() {
-    this.heartSince=null;this.heartFired=false;
-    this.heartSeen=-Infinity;this.pairSeen=-Infinity;
-    this.pair=undefined;this.pairFired=false;
+    this.heldScene = undefined;
+    this.sceneSince = 0;
+    this.sceneSeen = -Infinity;
+    this.sceneFired = false;
     this.left.clear();
     this.position.clear();
     this.navigator.clear();

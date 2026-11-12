@@ -6,7 +6,8 @@ import {
 import { defaults as siteDefaults } from "../src/app/types";
 import { StateStore } from "../src/app/StateStore";
 import { hand } from "./fixtures";
-const defaults={...siteDefaults,navigationMode:"position" as const};
+import { sceneGestures } from "../src/gesture/GestureBindings";
+const defaults={...siteDefaults,invertHorizontal:false,navigationMode:"position" as const};
 const detection = (
   handedness: string,
   gesture = "Pointing_Up",
@@ -131,7 +132,7 @@ it("requires both fingertip joins and fires once per held heart in either contro
 
 it("routes each held pair directly into its animated scene in both modes", () => {
   for (const navigationMode of ["gestures", "position"] as const) {
-    for (const [pose, id] of Object.entries({Thumb_Up:3, Closed_Fist:2, Open_Palm:0, Victory:0, Thumb_Down:0})) {
+    for (const [pose, id] of Object.entries({Thumb_Up:3, Closed_Fist:2})) {
       const controller = new HandInputController();
       const store = new StateStore();
       store.settings.navigationMode = navigationMode;
@@ -162,4 +163,80 @@ it("accepts moderate-confidence pairs and survives a short classification dropou
  controller.update([], 420, s);
  expect(controller.update(hands, 500, s).actions).toEqual([{type:"routine",value:"gravity"}]);
  expect(controller.update(hands, 600, s).actions).toEqual([]);
+});
+
+
+it("gives every listed two-hand scene a stable, order-independent gesture without leaking single-hand actions", () => {
+  for (const navigationMode of ["gestures", "position"] as const) {
+    for (const binding of sceneGestures.filter(binding => binding.modelGestures)) {
+      const controller = new HandInputController();
+      const s = {...defaults, navigationMode};
+      const poses = binding.modelGestures!;
+      const pair = [detection("Left", poses[0]), detection("Right", poses[1])];
+      expect(controller.update(pair, 0, s).actions).toEqual([]);
+      expect(controller.update([...pair].reverse(), 300, s).actions).toEqual([]);
+      expect(controller.update(pair, 449, s).actions).toEqual([]);
+      expect(controller.update(pair, 450, s).actions).toEqual([binding.action]);
+      expect(controller.update(pair, 1600, s).actions).toEqual([]);
+      // A brief dropout keeps the latch, so a held gesture cannot repeatedly restart a scene.
+      expect(controller.update([], 1700, s).actions).toEqual([]);
+      expect(controller.update(pair, 1750, s).actions).toEqual([]);
+      controller.update([], 2000, s);
+      expect(controller.update(pair, 2200, s).actions).toEqual([]);
+      expect(controller.update(pair, 2650, s).actions).toEqual([binding.action]);
+    }
+  }
+});
+
+it("rejects uncertain pair classifications and invalid landmarks before committing a scene", () => {
+  for (const change of [
+    (h: HandDetection) => { h.score = .2; },
+    (h: HandDetection) => { h.handednessScore = .2; },
+    (h: HandDetection) => { h.landmarks = []; },
+  ]) {
+    const controller = new HandInputController();
+    const pair = [detection("Left", "Victory"), detection("Right", "Victory")];
+    change(pair[0]);
+    for (const time of [0, 500, 1000]) {
+      expect(controller.update(pair, time, siteDefaults).actions)
+        .not.toContainEqual({type: "routine", value: "lap"});
+    }
+  }
+});
+
+it("clear resets the held-scene latch so camera restart accepts a new scene", () => {
+  const controller = new HandInputController();
+  const pair = [detection("Left", "ILoveYou"), detection("Right", "ILoveYou")];
+  controller.update(pair, 0, defaults);
+  expect(controller.update(pair, 500, defaults).actions).toEqual([{type:"routine",value:"rose"}]);
+  controller.clear();
+  expect(controller.update(pair, 600, defaults).actions).toEqual([]);
+  expect(controller.update(pair, 1100, defaults).actions).toEqual([{type:"routine",value:"rose"}]);
+});
+
+it("a single held fist emits center once to cancel a scene, while two fists still start gravity", () => {
+  const controller = new HandInputController();
+  const fist = detection("Left", "Closed_Fist");
+  fist.landmarks = hand([]);
+  expect(controller.update([fist], 0, siteDefaults).actions).not.toContainEqual({type:"center"});
+  expect(controller.update([fist], 100, siteDefaults).actions).toEqual([{type:"center"}]);
+  expect(controller.update([fist], 200, siteDefaults).actions).toEqual([]);
+  const pair = [fist, {...fist, handedness:"Right"}];
+  expect(controller.update(pair, 300, siteDefaults).actions).toEqual([]);
+  expect(controller.update(pair, 800, siteDefaults).actions).toEqual([{type:"routine",value:"gravity"}]);
+});
+
+
+it("requires a fresh hold after switching scene poses instead of inheriting the previous timer", () => {
+  const controller = new HandInputController();
+  const run = [detection("Left", "Victory"), detection("Right", "Victory")];
+  const escape = [detection("Left", "Thumb_Down"), detection("Right", "Thumb_Down")];
+  controller.update(run, 0, siteDefaults);
+  expect(controller.update(run, 500, siteDefaults).actions).toEqual([{type:"routine",value:"lap"}]);
+  expect(controller.update(escape, 600, siteDefaults).actions).toEqual([]);
+  expect(controller.update(escape, 1000, siteDefaults).actions).toEqual([]);
+  expect(controller.update(escape, 1050, siteDefaults).actions).toEqual([{type:"routine",value:"escape"}]);
+  expect(controller.update(run, 1100, siteDefaults).actions).toEqual([]);
+  expect(controller.update(run, 1500, siteDefaults).actions).toEqual([]);
+  expect(controller.update(run, 1550, siteDefaults).actions).toEqual([{type:"routine",value:"lap"}]);
 });

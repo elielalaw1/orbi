@@ -12,4 +12,4 @@ Character rendering is procedural. Recorded audio in public/audio is licensed se
 CC BY 3.0 license https://creativecommons.org/licenses/by/3.0/
 CC0 dedication https://creativecommons.org/publicdomain/zero/1.0/
 
-The official Wisdome Dome Simulator is bundled at `public/simulator/index.html` (GPL-3.0). Adaptations add live same-origin canvas input, compact seat controls, and ORBI keyboard forwarding. Its projection, dome geometry, seat calculations and cross-reflection shader remain the official implementation. The original full source is https://dcuartielles.github.io/wisdome-360/tools/dome-simulator.html.
+The official Wisdome Dome Simulator was used during development for projection inspection. Its embedded copy and live bridge have been removed from the performance application. The external simulator remains at https://dcuartielles.github.io/wisdome-360/tools/dome-simulator.html.

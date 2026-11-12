@@ -1,3 +1,29 @@
+# Performance-only application — 12 November 2026
+
+The studio/dashboard and embedded simulator have been removed from source, styles and shipped assets. The main page is now Orbi with a small performance toolbar and camera/gesture guide. D and the old simulator query cannot reopen a studio. The separate projector window stays UI-free; full-performance stereo recording remains available.
+
+Current validation:60 unit tests in14files,6 rewritten browser tests and production build pass. Browser tests verify no studio/sidebar/iframe, all scene controls and home reset, camera-only permissions and inversion, clean2160² HDMI output at x840,y0, mobile layout, camera denial, graphics failure, and2048² recording with stereo sound. The actual recorded fixture probes as VP9 2048² plus Opus48kHz stereo. Physical venue checks remain necessary.
+
+# Hand gesture update — 12 November 2026
+
+All nine animation-index scenes now have hand gestures from the shared GestureBindings list. Two-hand scene poses require450ms and180ms release/dropout tolerance. One fist cancels a scene in default gesture navigation. The camera guide includes scene emoji, movement and single-hand expressions. Floating guide is hidden in the dashboard to avoid blocking its camera controls.
+
+Microphone capture and speech-recognition implementation/UI were removed. Camera requests explicitly use audio:false. Generated sound effects and stereo recording remain intact.
+
+Verification:58 unit tests across14 files pass; all6 browser tests pass; production build passes under Node22. Browser checks cover guide rendering, absence of voice/mic controls, camera-only capture constraints, clean HDMI output and actual stereo recording. Synthetic hand fixtures test routing, hold/release, scene switching and confidence rejection; real-hand camera recognition still depends on pose and lighting.
+
+# Current submission checks — 12 November 2026
+
+The historical report below describes 10 November and is not proof that final submission files exist.
+
+- Current unit tests: **60 passing tests across15 files**; production TypeScript/Vite build passes.
+- A real Chrome manual performance capture was checked with ffprobe: **2048×2048 VP9, stereo Opus48kHz**. Recording restores the previous preview resolution afterward.
+- The new delivery converter was exercised on a synthetic stereo fixture and an actual short Orbi browser recording. Both exported H.264 High2048², constant30fps, measured72Mbit/s, 8-bit Rec.709, without muxed audio; matching mono48kHz/16-bit PCM WAVs have exactly1600 samples per video frame.
+- Decoded first-frame black corners/white center and first-frame1kHz tone in both channels pass `scripts/check-delivery.py`. The synthetic fixture has31 frames including the sync marker. Fixtures are temporary checks, not the full performance fallback.
+- Current browser suite: **5 tests passed in 14.3 seconds** on 12 November 2026 using installed Google Chrome and Node 22. Updated checks cover current controls, black corners and emotional tint, clean 2160² output positioning and synchronization after the operator closes, camera denial/manual recovery, local MediaPipe startup, 2048² performance recording/download/settings restoration, mobile width, and unsupported graphics. Browser discovery is portable; screenshots and downloads stay in test-results rather than overwriting reference documentation. This is browser validation, not a venue performance benchmark.
+- Final performance capture/order, final identity/names, full simulator watch-through, real camera accuracy, actual HDMI/Dante routing, venue brightness and sustained frame rate remain unverified.
+- `public/audio/boxing.mp3` has no documented source/credit yet; obtain provenance before distribution.
+
 # Validation report — 10 November 2026
 
 ## Automated results

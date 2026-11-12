@@ -42,6 +42,7 @@ export interface Settings {
   inferenceFps: number;
   pointingMethod: "orientation" | "position";
   mirrored: boolean;
+  invertHorizontal: boolean;
   centerX: number;
   centerY: number;
   deadZone: number;
@@ -82,6 +83,7 @@ export const defaults: Settings = {
   inferenceFps: 20,
   pointingMethod: "position",
   mirrored: true,
+  invertHorizontal: true,
   centerX: 0.5,
   centerY: 0.5,
   deadZone: 0.15,
@@ -90,6 +92,7 @@ export const defaults: Settings = {
 export type GestureScene = 'gravity' | 'boxing';
 export type Routine = "lap" | "flirt" | "escape" | "rose" | "echo" | GestureScene;
 export type Action =
+  | { type: "flood" }
   | { type: "routine"; value: Routine }
   | { type: "emotion"; value: Emotion }
   | { type: "direction"; value: Direction }

@@ -1,13 +1,15 @@
 import { it, expect } from "vitest";
 import { GestureController } from "../src/gesture/GestureController";
-import { defaults } from "../src/app/types";
+import { defaults as siteDefaults } from "../src/app/types";
 import { hand } from "./fixtures";
+const defaults={...siteDefaults,invertHorizontal:false};
 it("routes stabilized mock recognition results through shared actions", () => {
   for (const [gesture, emotion] of [
     ["Thumb_Up", "happy"],
     ["Thumb_Down", "sad"],
     ["Open_Palm", "surprised"],
     ["Victory", "playful"],
+    ["ILoveYou", "playful"],
     ["Closed_Fist", "surprised"],
   ]) {
     const c = new GestureController(),

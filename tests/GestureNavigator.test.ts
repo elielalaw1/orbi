@@ -1,9 +1,10 @@
 import { it, expect } from "vitest";
 import { GestureNavigator, indexDirection, navigationAngles } from "../src/gesture/GestureNavigator";
 import { HandInputController, type HandDetection } from "../src/gesture/HandInputController";
-import { defaults } from "../src/app/types";
+import { defaults as originalDefaults } from "../src/app/types";
 import { roomToMaster } from "../src/dome/ProjectionMath";
 import { hand, rotatedHand } from "./fixtures";
+const defaults = {...originalDefaults, invertHorizontal: false};
 const pointing = (angle = 0, handedness = "Left"): HandDetection => ({
  landmarks: rotatedHand(hand([5]), angle), gesture: "None", score: 0.1,
  handedness, handednessScore: 0.98,
@@ -74,4 +75,20 @@ it("accepts a stable pointing command within two 30fps intervals, rejects a sing
  expect(n.updateHands([h],0,defaults).command).toBeNull();
  expect(n.updateHands([h],33,defaults).command).toBeNull();
  expect(n.updateHands([h],67,defaults).command).toBe("right");
+});
+
+it("inverts dome left/right independently of camera mirroring without changing vertical commands", () => {
+  for (const mirrored of [false, true]) {
+    for (const angle of [-Math.PI/2, Math.PI/2, 0, Math.PI]) {
+      const h = pointing(angle);
+      const normal = indexDirection(h.landmarks, mirrored, false);
+      const inverted = indexDirection(h.landmarks, mirrored, true);
+      expect(inverted).toBe(normal === "left" ? "right" : normal === "right" ? "left" : normal);
+      if (angle === 0) continue;
+      const n = new GestureNavigator();
+      const settings = {...defaults, mirrored, invertHorizontal: true};
+      n.updateHands([h], 0, settings);
+      expect(n.updateHands([h], 100, settings).command).toBe(inverted);
+    }
+  }
 });
